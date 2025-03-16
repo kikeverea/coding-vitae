@@ -1,0 +1,21 @@
+### Course
+# name
+# course_url
+# github_url
+# languages: reference? string?
+# experience lvl: "low" | "medium" | "high"
+# official: boolean
+
+### CourseLanguage
+# course: references
+# language: references
+
+### CourseCertification
+# course: references
+# name
+# url
+# icon
+# official: true
+
+### Language
+# name
