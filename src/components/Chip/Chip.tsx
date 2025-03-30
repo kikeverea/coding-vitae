@@ -56,10 +56,21 @@ const Chip: FC<ChipProps> = ({
       }}
       data-testid='chip'
       onClick={ toggleChip }
+      role={ selectable ? 'button' : ''}
+      aria-selected={ selected }
     >
-      { leadingIcon && <span className={styles.leadingIcon} style={{ color: iconColor }}>{leadingIcon}</span> }
+      { leadingIcon && <span className={styles.leadingIcon} style={{ color: iconColor }}>{ leadingIcon }</span> }
       <span className={styles.label}>{label}</span>
-      { trailingIcon && <span className={styles.trailingIcon} onClick={ onRemove } role='button'>{trailingIcon}</span> }
+      { trailingIcon &&
+        <span
+          className={ styles.trailingIcon }
+          onClick={ onRemove }
+          role='button'
+          aria-label='remove this option'
+        >
+          { trailingIcon }
+        </span>
+      }
     </div>
   )
 }

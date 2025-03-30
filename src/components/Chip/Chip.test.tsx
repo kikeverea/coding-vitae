@@ -48,15 +48,7 @@ describe('Chip', () => {
       user = userEvent.setup()
     })
 
-    test('If not selected, do not render selected icon', () => {
-      const selectedIcon = <i className="fa-solid fa-circle-user" data-testid='test-icon'></i>
-      render(<Chip label='Chip test' selectable={ true } selectedIcon={ selectedIcon } />)
-
-      const renderedIcon = screen.queryByTestId('test-icon')
-      expect(renderedIcon).toBeNull()
-    })
-
-    test('If not selectable, clicking chip does nothing', async () => {
+    test('If not selectable, clicking chip does not display selected icon', async () => {
       const selectedIcon = <i className="fa-solid fa-circle-user" data-testid='test-icon'></i>
       render(<Chip label='Chip test' selectedIcon={ selectedIcon } />)
 
@@ -67,14 +59,30 @@ describe('Chip', () => {
       expect(renderedIcon).toBeNull()
     })
 
+    test('If selectable, role is button', async () => {
+      render(<Chip label='Chip test' selectable={ true }/>)
+
+      const chip = screen.getByTestId('chip')
+      expect(chip.role).toBe('button')
+    })
+
+    test('If not selected, do not render selected icon', () => {
+      const selectedIcon = <i className="fa-solid fa-circle-user" data-testid='test-icon'></i>
+      render(<Chip label='Chip test' selectable={ true } selectedIcon={ selectedIcon } />)
+
+      const renderedIcon = screen.queryByTestId('test-icon')
+      expect(renderedIcon).toBeNull()
+    })
+
+
     test('If selected, render selected icon', async () => {
-      const selectedIcon = <i className="fa-solid fa-circle-user test-icon" data-testid='test-icon'></i>
+      const selectedIcon = <i className="fa-solid fa-circle-user test-icon" data-testid='my-test-icon'></i>
       render(<Chip label='Chip test' selectable={ true } selectedIcon={ selectedIcon } />)
 
       const chip = screen.getByTestId('chip')
       await user.click(chip)
 
-      const renderedIcon = screen.queryByTestId('test-icon')
+      const renderedIcon = screen.queryByTestId('my-test-icon')
       expect(renderedIcon).toBeDefined()
       expect(renderedIcon?.classList.contains('test-icon')).toBe(true)
     })
@@ -87,6 +95,15 @@ describe('Chip', () => {
 
       const renderedIcon = screen.queryByTestId('test-icon')
       expect(renderedIcon).toBeDefined()
+    })
+
+    test('If selected aria selected is true', async () => {
+      render(<Chip label='Chip test' selectable={ true } />)
+
+      const chip = screen.getByTestId('chip')
+      await user.click(chip)
+
+      expect(chip.ariaSelected).toBe('true')
     })
 
     test('toggles chip when clicked', async () => {
@@ -123,8 +140,14 @@ describe('Chip', () => {
     test('If removable and no "remove icon" is given, renders default remove icon', () => {
       render(<Chip label='Chip test' removable={ true } />)
 
-      const renderedIcon = screen.queryByTestId('test-icon')
+      const renderedIcon = screen.getByRole('button')
+
       expect(renderedIcon).toBeDefined()
+      expect(renderedIcon.ariaLabel).toBe('remove this option')
+    })
+
+    test('removable icon has role button and aria label', () => {
+      render(<Chip label='Chip test' removable={ true } />)
     })
 
     test('If remove icon is clicked, call onRemove prop', async () => {
