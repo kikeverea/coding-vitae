@@ -6,30 +6,31 @@ import Chip from './Chip.tsx'
 
 describe('Chip', () => {
 
-  test('Renders text', () => {
+  const icon = <i className="fa-solid fa-circle-user" data-testid='test-icon'></i>
+  const svg = <svg data-testid='test-icon' xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M399 384.2C376.9 345.8 335.4 320 288 320l-64 0c-47.4 0-88.9 25.8-111 64.2c35.2 39.2 86.2 63.8 143 63.8s107.8-24.7 143-63.8zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256zm256 16a72 72 0 1 0 0-144 72 72 0 1 0 0 144z"/></svg>
+
+  test('renders text', () => {
     render(<Chip label='Chip test'/>)
 
     const text = screen.getByText('Chip test')
     expect(text).toBeDefined()
   })
 
-  test('Renders icon', () => {
-    const icon = <i className="fa-solid fa-circle-user" data-testid='test-icon'></i>
+  test('renders icon', () => {
     render(<Chip label='Chip test' icon={ icon }/>)
 
     const renderedIcon = screen.getByTestId('test-icon')
     expect(renderedIcon).toBeDefined()
   })
 
-  test('Renders svg', () => {
-    const svg = <svg data-testid='test-icon' xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M399 384.2C376.9 345.8 335.4 320 288 320l-64 0c-47.4 0-88.9 25.8-111 64.2c35.2 39.2 86.2 63.8 143 63.8s107.8-24.7 143-63.8zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256zm256 16a72 72 0 1 0 0-144 72 72 0 1 0 0 144z"/></svg>
+  test('renders svg', () => {
     render(<Chip label='Chip test' icon={ svg }/>)
 
     const renderedIcon = screen.getByTestId('test-icon')
     expect(renderedIcon).toBeDefined()
   })
 
-  test('Renders icon component', () => {
+  test('renders icon component', () => {
     const Icon = () => <i className="fa-solid fa-circle-user" data-testid='test-icon'></i>
     render(<Chip label='Chip test' icon={ <Icon /> } />)
 
@@ -37,7 +38,7 @@ describe('Chip', () => {
     expect(renderedIcon).toBeDefined()
   })
 
-  test('Cant be both selectable and removable', () => {
+  test('cant be both selectable and removable', () => {
     expect(() => render(<Chip label='Chip test' selectable={ true } removable={ true }/>)).toThrow()
   })
 
@@ -48,7 +49,7 @@ describe('Chip', () => {
       user = userEvent.setup()
     })
 
-    test('If not selectable, clicking chip does not display selected icon', async () => {
+    test('if not selectable, clicking chip does not display selected icon', async () => {
       const selectedIcon = <i className="fa-solid fa-circle-user" data-testid='test-icon'></i>
       render(<Chip label='Chip test' selectedIcon={ selectedIcon } />)
 
@@ -59,14 +60,14 @@ describe('Chip', () => {
       expect(renderedIcon).toBeNull()
     })
 
-    test('If selectable, role is button', async () => {
+    test('if selectable, role is button', async () => {
       render(<Chip label='Chip test' selectable={ true }/>)
 
       const chip = screen.getByTestId('chip')
       expect(chip.role).toBe('button')
     })
 
-    test('If not selected, do not render selected icon', () => {
+    test('if not selected, do not render selected icon', () => {
       const selectedIcon = <i className="fa-solid fa-circle-user" data-testid='test-icon'></i>
       render(<Chip label='Chip test' selectable={ true } selectedIcon={ selectedIcon } />)
 
@@ -75,7 +76,7 @@ describe('Chip', () => {
     })
 
 
-    test('If selected, render selected icon', async () => {
+    test('if selected, render selected icon', async () => {
       const selectedIcon = <i className="fa-solid fa-circle-user test-icon" data-testid='my-test-icon'></i>
       render(<Chip label='Chip test' selectable={ true } selectedIcon={ selectedIcon } />)
 
@@ -87,7 +88,7 @@ describe('Chip', () => {
       expect(renderedIcon?.classList.contains('test-icon')).toBe(true)
     })
 
-    test('If selected and no "selected icon" is given, render the default selected icon', async () => {
+    test('if selected and no "selected icon" is given, render the default selected icon', async () => {
       render(<Chip label='Chip test' selectable={ true } />)
 
       const chip = screen.getByTestId('chip')
@@ -97,7 +98,7 @@ describe('Chip', () => {
       expect(renderedIcon).toBeDefined()
     })
 
-    test('If selected aria selected is true', async () => {
+    test('if selected aria selected is true', async () => {
       render(<Chip label='Chip test' selectable={ true } />)
 
       const chip = screen.getByTestId('chip')
@@ -120,6 +121,16 @@ describe('Chip', () => {
       const notRenderedIcon = screen.queryByTestId('test-icon')
       expect(notRenderedIcon).toBeNull()
     })
+
+    // Follows Font Awesome recommendations on accessibility
+    test('default selected icon has role img and aria hidden true', async () => {
+      render(<Chip label='Chip test' selectable={ true } selected={ true } />)
+
+      const renderedIcon = screen.getByTestId('selected-icon')
+
+      expect(renderedIcon.role).toBe('img')
+      expect(renderedIcon.ariaHidden).toBe('true')
+    })
   })
 
   describe('Removable', () => {
@@ -129,7 +140,7 @@ describe('Chip', () => {
       user = userEvent.setup()
     })
 
-    test('If removable, renders remove icon', () => {
+    test('if removable, renders remove icon', () => {
       const removeIcon = <i className="fa-solid fa-circle-user" data-testid='test-icon'></i>
       render(<Chip label='Chip test' removable={ true } removeIcon={ removeIcon } />)
 
@@ -137,7 +148,7 @@ describe('Chip', () => {
       expect(renderedIcon).toBeDefined()
     })
 
-    test('If removable and no "remove icon" is given, renders default remove icon', () => {
+    test('if removable and no "remove icon" is given, renders default remove icon', () => {
       render(<Chip label='Chip test' removable={ true } />)
 
       const renderedIcon = screen.getByRole('button')
@@ -150,7 +161,7 @@ describe('Chip', () => {
       render(<Chip label='Chip test' removable={ true } />)
     })
 
-    test('If remove icon is clicked, call onRemove prop', async () => {
+    test('if remove icon is clicked, call onRemove prop', async () => {
       const onRemove = vi.fn()
       render(<Chip label='Chip test' removable={ true } onRemove={ onRemove } />)
 
@@ -159,10 +170,20 @@ describe('Chip', () => {
 
       expect(onRemove).toHaveBeenCalledTimes(1)
     })
+
+    // Follows Font Awesome recommendations on accessibility
+    test('default remove icon has role img and aria hidden true', async () => {
+      render(<Chip label='Chip test' removable={ true } />)
+
+      const renderedIcon = screen.getByTestId('remove-icon')
+
+      expect(renderedIcon.role).toBe('img')
+      expect(renderedIcon.ariaHidden).toBe('true')
+    })
   })
 
   describe('Style', () => {
-    test('Renders icon with the given "color"', () => {
+    test('renders icon with the given "color"', () => {
       const icon = <i className="fa-solid fa-calendar-days" data-testid="test-icon"></i>
       render(<Chip label='Chip test' color='#FFF' icon={ icon } iconColor='#FFF'/>)
 
@@ -171,7 +192,7 @@ describe('Chip', () => {
       expect(chipIcon.parentElement?.style.color).toBe('rgb(255, 255, 255)')
     })
 
-    test('Renders with a border of a given "color"', () => {
+    test('renders with a border of a given "color"', () => {
       render(<Chip label='Chip test' color='#FFF' />)
 
       const chip = screen.getByTestId('chip')
@@ -179,7 +200,7 @@ describe('Chip', () => {
       expect(chip.style.borderColor).toBe('rgb(255, 255, 255)')
     })
 
-    test('Renders with a border of a given "border color"', () => {
+    test('renders with a border of a given "border color"', () => {
       render(<Chip label='Chip test' borderColor='#FFF' />)
 
       const chip = screen.getByTestId('chip')
@@ -187,7 +208,7 @@ describe('Chip', () => {
       expect(chip.style.borderColor).toBe('rgb(255, 255, 255)')
     })
 
-    test('If type solid, renders with a background and a border of a given "color"', () => {
+    test('if type solid, renders with a background and a border of a given "color"', () => {
       render(<Chip label='Chip test' color='#1735EA' chipStyle='solid' />)
 
       const chip = screen.getByTestId('chip')
@@ -196,7 +217,7 @@ describe('Chip', () => {
       expect(chip.style.backgroundColor).toBe('rgb(23, 53, 234)')
     })
 
-    test('If type solid, renders with a background of a given "color", and a border of a given "border color"', () => {
+    test('if type solid, renders with a background of a given "color", and a border of a given "border color"', () => {
       render(<Chip label='Chip test' chipStyle='solid' borderColor="#EA1717" color='#1735EA' />)
 
       const chip = screen.getByTestId('chip')
@@ -205,7 +226,7 @@ describe('Chip', () => {
       expect(chip.style.backgroundColor).toBe('rgb(23, 53, 234)')
     })
 
-    test('Has cursor pointer if selectable"', () => {
+    test('has cursor pointer if selectable"', () => {
       render(<Chip label='Chip test' selectable={ true } />)
 
       const chip = screen.getByTestId('chip')
