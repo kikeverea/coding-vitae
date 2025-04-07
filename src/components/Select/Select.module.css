@@ -1,0 +1,55 @@
+.select {
+  min-width: 300px;
+  cursor: pointer;
+  position: relative;
+}
+
+.display {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid white;
+  border-radius: 6px;
+  padding: 8px 16px;
+}
+
+.displayValue {
+  width: 100%;
+  display: flex;
+  flex-grow: 1;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.buttonIcon {
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+  fill: #FFF;
+}
+
+.dropdownIcon {
+  pointer-events: none;
+}
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  width: 100%;
+  border: 1px solid white;
+  border-radius: 6px;
+  padding: 8px 0;
+  box-shadow: 0 6px 16px rgba(200, 200, 200, 0.2);
+  z-index: 9999;
+  background-color: #242424;
+}
+
+.searchbox {
+  margin: 8px 16px;
+  height: 30px;
+  width: calc(100% - 32px);
+}
+
+.noDataMessage {
+  text-align: center;
+}
