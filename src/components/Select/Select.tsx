@@ -1,4 +1,4 @@
-import { FC, MouseEvent, KeyboardEvent, useRef, useState, useEffect } from 'react'
+import {FC, MouseEvent, KeyboardEvent, useRef, useState, useEffect, ReactNode} from 'react'
 import Chip from '../Chip/Chip.tsx'
 import styles from './Select.module.css'
 import Option, { OptionType } from './Option'
@@ -279,16 +279,33 @@ const Select: FC<SelectProps> = ({
             aria-multiselectable={ multiple }
           >
             { filteredOptions.length > 0
-              ? filteredOptions.map((option, index) =>
-                <Option
-                  key={option.value}
-                  option={option}
-                  selected={ selectionSet.has(option.value) }
-                  focused={ focusedOptionIndex === index }
-                  onPressed={ setIgnoreBlurEvent }
-                  onClicked={ e => handleOptionClicked(e, option) }
-                  onHover={ e => handleOptionHover(e, option) }
-                />)
+              ? filteredOptions.reduce(
+                ([options, group]: [ReactNode[], string], option: OptionType, index: number): [ReactNode[], string] =>
+                {
+                  const optionGroup = option.group || ''
+
+                  if (optionGroup && optionGroup !== group) {
+                    options.push(
+                      <div key={ optionGroup } className={ styles.optionGroupLabel } aria-label={ optionGroup }>
+                        { optionGroup }
+                      </div>
+                    )
+                  }
+
+                  options.push(
+                    <Option
+                      key={ option.value }
+                      option={ option }
+                      selected={ selectionSet.has(option.value) }
+                      focused={ focusedOptionIndex === index }
+                      onPressed={ setIgnoreBlurEvent }
+                      onClicked={ e => handleOptionClicked(e, option) }
+                      onHover={ e => handleOptionHover(e, option) }
+                    />
+                  )
+                  return [options, optionGroup || '']
+                }, [[], ''])
+                [0]
               : <div role='option' className={ styles.noDataMessage } aria-label='no data avaliable'>
                   { noDataMessage }
                 </div>

@@ -13,6 +13,13 @@ describe('Select', () => {
     { name: "Option 3", value: "option-3" }
   ]
 
+  const groupedOptions: Option[] = [
+    { name: "Option 1", value: "option-1" },
+    { name: "Option 2", value: "option-2" },
+    { name: "Option 3", value: "option-3", group: 'Test group' },
+    { name: "Option 4", value: "option-4", group: 'Test group' }
+  ]
+
   let selectElement: HTMLElement
   let user: UserEvent
   let listbox: HTMLElement
@@ -354,6 +361,26 @@ describe('Select', () => {
     })
   })
 
+  describe('With option groups', () => {
+    beforeEach(async () => {
+      render(<Select options={ groupedOptions } placeholder={ 'Test placeholder' } expanded={ true }/>)
+      selectElement = screen.getByRole('combobox')
+      optionElements = screen.getAllByRole('option')
+    })
+
+    test('renders all options and their groups', () => {
+      const optionElements: HTMLOptionElement[] = screen.getAllByRole('option')
+      const optionGroupLabels: HTMLOptionElement[] = screen.getAllByLabelText('Test group')
+
+      expect(optionElements.length).toBe(4)
+      expect(optionGroupLabels.length).toBe(1)
+
+      optionElements.forEach((option, index) => {
+        expect(option.textContent).toBe(`${groupedOptions[index].name}`)
+      })
+    })
+  })
+
   describe('With initial value', () => {
     test('without options, initial value is ignored', () => {
       render(<Select options={[]} placeholder='Test placeholder' initialValue='option-3' />)
@@ -532,8 +559,119 @@ describe('Select', () => {
         expect(selectedOptionValue.value).toBe('')
       })
     })
+  })
 
-    describe('Keyboard navigation and Focus', () => {
+  describe('Keyboard navigation and Focus', () => {
+    beforeEach(async () => {
+      render(<Select options={ options } placeholder='Test placeholder' expanded={ true } />)
+      selectElement = screen.getByRole('combobox')
+      listbox = screen.getByRole('listbox')
+      optionElements = screen.queryAllByRole('option')
+    })
+
+    test('first option is selected by default', async () => {
+      const [firstOption, firstOptionElement] = getOption(0)
+
+      expect(selectElement.getAttribute('aria-activedescendant')).toBe(`select__option-${firstOption.value}`)
+      expect(firstOptionElement.className.includes('optionFocused')).toBe(true)
+    })
+
+    test('"arrow down" focuses the next option', async () => {
+      fireEvent.keyDown(selectElement, { key: 'ArrowDown', code: 'ArrowDown', charCode: 38 })
+      expect(selectElement.getAttribute('aria-activedescendant')).toBe(`select__option-${options[1].value}`)
+
+      fireEvent.keyDown(selectElement, { key: 'ArrowDown' })
+      expect(selectElement.getAttribute('aria-activedescendant')).toBe(`select__option-${options[2].value}`)
+
+      // Last option is selected, expect arrow down to focus the same option
+      fireEvent.keyDown(selectElement, { key: 'ArrowDown' })
+      expect(selectElement.getAttribute('aria-activedescendant')).toBe(`select__option-${options[2].value}`)
+    })
+
+    test('"arrow up" focuses the next option', () => {
+      // Move focus to the last option
+      for (let i = 0; i < 2; i++)
+        fireEvent.keyDown(selectElement, { key: 'ArrowDown' })
+
+      fireEvent.keyDown(selectElement, { key: 'ArrowUp' })
+      expect(selectElement.getAttribute('aria-activedescendant')).toBe(`select__option-${options[1].value}`)
+
+      fireEvent.keyDown(selectElement, { key: 'ArrowUp' })
+      expect(selectElement.getAttribute('aria-activedescendant')).toBe(`select__option-${options[0].value}`)
+
+      // First option is selected, expect arrow down to focus the same option
+      fireEvent.keyDown(selectElement, { key: 'ArrowUp' })
+      expect(selectElement.getAttribute('aria-activedescendant')).toBe(`select__option-${options[0].value}`)
+    })
+
+    test('"enter" selects the currently focused option', () => {
+      // Move focus to the last option
+      for (let i = 0; i < 3; i++)
+        fireEvent.keyDown(selectElement, { key: 'ArrowDown' })
+
+      fireEvent.keyDown(selectElement, { key: 'Enter' })
+
+      const selectedOptionName = screen.getByTestId('display-content')
+      const selectedOptionValue: HTMLInputElement = screen.getByTestId('selected-option-value')
+      const listbox = screen.queryByRole('listbox')
+
+      const [option] = getOption(2)
+
+      expect(listbox).toBeNull()
+      expect(selectedOptionName.textContent).toContain(option.name)
+      expect(selectedOptionValue.value).toBe(option.value)
+    })
+
+    test('"esc" collapses the dropdown', () => {
+      fireEvent.keyDown(selectElement, { key: 'Escape' });
+
+      const listbox = screen.queryByRole('listbox')
+      expect(listbox).toBeNull()
+    })
+
+    test('filtering options sets first option as focused', async () => {
+      const input: HTMLInputElement = screen.getByRole('searchbox')
+
+      fireEvent.keyDown(selectElement, { key: 'ArrowDown', code: 'ArrowDown', charCode: 38 })
+      expect(selectElement.getAttribute('aria-activedescendant')).toBe(`select__option-${options[1].value}`)
+
+      await user.type(input, "option")
+      expect(selectElement.getAttribute('aria-activedescendant')).toBe(`select__option-${options[0].value}`)
+    })
+
+    test('hovering over an option gives it "visual focus"', async () => {
+      // First option selected by default
+      const [_firstOptionNow, firstOptionElement] = getOption(0)
+      expect(selectElement.getAttribute('aria-activedescendant')).toBe(`select__option-${options[0].value}`)
+
+      const indexAfterFirst = Math.max(1, randomIndex())
+      const [_option, optionElement] = getOption(indexAfterFirst)
+
+      fireEvent.mouseEnter(optionElement)
+      const [_optionNow, optionElementNow] = getOption(indexAfterFirst)
+
+      // first option no longer 'focused'
+      expect(firstOptionElement.className.includes('optionFocused')).toBe(false)
+
+      expect(optionElementNow.className.includes('optionFocused')).toBe(true)
+      expect(selectElement.getAttribute('aria-activedescendant')).toBe(`select__option-${options[indexAfterFirst].value}`)
+    })
+  })
+
+  describe('Accessibility', () => {
+
+    describe('With collapsed dropdown', () => {
+      beforeEach(async () => {
+        render(<Select options={ options } placeholder='Test placeholder' />)
+        selectElement = screen.getByRole('combobox')
+      })
+
+      test('select element has expanded false by default', () => {
+        expect(selectElement.ariaExpanded).toBe('false')
+      })
+    })
+
+    describe('With expanded dropdown', () => {
       beforeEach(async () => {
         render(<Select options={ options } placeholder='Test placeholder' expanded={ true } />)
         selectElement = screen.getByRole('combobox')
@@ -541,160 +679,49 @@ describe('Select', () => {
         optionElements = screen.queryAllByRole('option')
       })
 
-      test('first option is selected by default', async () => {
-        const [firstOption, firstOptionElement] = getOption(0)
+      test('select element has accessibility properties', async () => {
+        expect(selectElement.tabIndex).toBe(0)
+        expect(selectElement.role).toBe('combobox')
+        expect(selectElement.ariaExpanded).toBe('true')
+        expect(selectElement.ariaHasPopup).toBe('listbox')
+        expect(selectElement.hasAttribute('aria-owns')).toBe(true)
+        expect(selectElement.hasAttribute('aria-controls')).toBe(true)
 
-        expect(selectElement.getAttribute('aria-activedescendant')).toBe(`select__option-${firstOption.value}`)
-        expect(firstOptionElement.className.includes('optionFocused')).toBe(true)
+        const valueDisplay = within(selectElement).getByTestId('display-content')
+        expect(valueDisplay.ariaLive).toBe('polite')
+
+        // Choose an option so clear button is rendered
+        await user.click(getOption(randomIndex())[1])
+
+        const clearButton = screen.getByLabelText('clear selected option')
+        expect(clearButton.role).toBe('button')
       })
 
-      test('"arrow down" focuses the next option', async () => {
-        fireEvent.keyDown(selectElement, { key: 'ArrowDown', code: 'ArrowDown', charCode: 38 })
-        expect(selectElement.getAttribute('aria-activedescendant')).toBe(`select__option-${options[1].value}`)
+      test('dropdown search element has accessibility properties', () => {
+        const search = within(listbox.parentElement as HTMLElement).getByRole('searchbox')
 
-        fireEvent.keyDown(selectElement, { key: 'ArrowDown' })
-        expect(selectElement.getAttribute('aria-activedescendant')).toBe(`select__option-${options[2].value}`)
-
-        // Last option is selected, expect arrow down to focus the same option
-        fireEvent.keyDown(selectElement, { key: 'ArrowDown' })
-        expect(selectElement.getAttribute('aria-activedescendant')).toBe(`select__option-${options[2].value}`)
+        // @ts-ignore
+        expect(search.type).toBe('search')
+        expect(search.ariaLabel).toBe('search options')
+        expect(search.tabIndex).toBe(0)
+        expect(search.getAttribute('aria-controls')).toBe('select__options')
       })
 
-      test('"arrow up" focuses the next option', () => {
-        // Move focus to the last option
-        for (let i = 0; i < 2; i++)
-          fireEvent.keyDown(selectElement, { key: 'ArrowDown' })
-
-        fireEvent.keyDown(selectElement, { key: 'ArrowUp' })
-        expect(selectElement.getAttribute('aria-activedescendant')).toBe(`select__option-${options[1].value}`)
-
-        fireEvent.keyDown(selectElement, { key: 'ArrowUp' })
-        expect(selectElement.getAttribute('aria-activedescendant')).toBe(`select__option-${options[0].value}`)
-
-        // First option is selected, expect arrow down to focus the same option
-        fireEvent.keyDown(selectElement, { key: 'ArrowUp' })
-        expect(selectElement.getAttribute('aria-activedescendant')).toBe(`select__option-${options[0].value}`)
-      })
-
-      test('"enter" selects the currently focused option', () => {
-        // Move focus to the last option
-        for (let i = 0; i < 3; i++)
-          fireEvent.keyDown(selectElement, { key: 'ArrowDown' })
-
-        fireEvent.keyDown(selectElement, { key: 'Enter' })
-
-        const selectedOptionName = screen.getByTestId('display-content')
-        const selectedOptionValue: HTMLInputElement = screen.getByTestId('selected-option-value')
-        const listbox = screen.queryByRole('listbox')
-
-        const [option] = getOption(2)
-
-        expect(listbox).toBeNull()
-        expect(selectedOptionName.textContent).toContain(option.name)
-        expect(selectedOptionValue.value).toBe(option.value)
-      })
-
-      test('"esc" collapses the dropdown', () => {
-        fireEvent.keyDown(selectElement, { key: 'Escape' });
-
-        const listbox = screen.queryByRole('listbox')
-        expect(listbox).toBeNull()
-      })
-
-      test('filtering options sets first option as focused', async () => {
-        const input: HTMLInputElement = screen.getByRole('searchbox')
-
-        fireEvent.keyDown(selectElement, { key: 'ArrowDown', code: 'ArrowDown', charCode: 38 })
-        expect(selectElement.getAttribute('aria-activedescendant')).toBe(`select__option-${options[1].value}`)
-
-        await user.type(input, "option")
-        expect(selectElement.getAttribute('aria-activedescendant')).toBe(`select__option-${options[0].value}`)
-      })
-
-      test('hovering over an option gives it "visual focus"', async () => {
-        // First option selected by default
-        const [_firstOptionNow, firstOptionElement] = getOption(0)
-        expect(selectElement.getAttribute('aria-activedescendant')).toBe(`select__option-${options[0].value}`)
-
-        const indexAfterFirst = Math.max(1, randomIndex())
-        const [_option, optionElement] = getOption(indexAfterFirst)
-
-        fireEvent.mouseEnter(optionElement)
-        const [_optionNow, optionElementNow] = getOption(indexAfterFirst)
-
-        // first option no longer 'focused'
-        expect(firstOptionElement.className.includes('optionFocused')).toBe(false)
-
-        expect(optionElementNow.className.includes('optionFocused')).toBe(true)
-        expect(selectElement.getAttribute('aria-activedescendant')).toBe(`select__option-${options[indexAfterFirst].value}`)
+      test('dropdown listbox element have accessibility properties', () => {
+        expect(listbox.role).toBe('listbox')
+        expect(listbox.ariaLive).toBe('polite')
+        expect(listbox.ariaMultiSelectable).toBe('false')
       })
     })
 
-    describe('Accessibility', () => {
-
-      describe('With collapsed dropdown', () => {
-        beforeEach(async () => {
-          render(<Select options={ options } placeholder='Test placeholder' />)
-          selectElement = screen.getByRole('combobox')
-        })
-
-        test('select element has expanded false by default', () => {
-          expect(selectElement.ariaExpanded).toBe('false')
-        })
+    describe('With multiple select', () => {
+      beforeEach(async () => {
+        render(<Select options={ options } placeholder='Test placeholder' multiple={ true } expanded={ true } />)
+        listbox = screen.getByRole('listbox')
       })
 
-      describe('With expanded dropdown', () => {
-        beforeEach(async () => {
-          render(<Select options={ options } placeholder='Test placeholder' expanded={ true } />)
-          selectElement = screen.getByRole('combobox')
-          listbox = screen.getByRole('listbox')
-          optionElements = screen.queryAllByRole('option')
-        })
-
-        test('select element has accessibility properties', async () => {
-          expect(selectElement.tabIndex).toBe(0)
-          expect(selectElement.role).toBe('combobox')
-          expect(selectElement.ariaExpanded).toBe('true')
-          expect(selectElement.ariaHasPopup).toBe('listbox')
-          expect(selectElement.hasAttribute('aria-owns')).toBe(true)
-          expect(selectElement.hasAttribute('aria-controls')).toBe(true)
-
-          const valueDisplay = within(selectElement).getByTestId('display-content')
-          expect(valueDisplay.ariaLive).toBe('polite')
-
-          // Choose an option so clear button is rendered
-          await user.click(getOption(randomIndex())[1])
-
-          const clearButton = screen.getByLabelText('clear selected option')
-          expect(clearButton.role).toBe('button')
-        })
-
-        test('dropdown search element has accessibility properties', () => {
-          const search = within(listbox.parentElement as HTMLElement).getByRole('searchbox')
-
-          // @ts-ignore
-          expect(search.type).toBe('search')
-          expect(search.ariaLabel).toBe('search options')
-          expect(search.tabIndex).toBe(0)
-          expect(search.getAttribute('aria-controls')).toBe('select__options')
-        })
-
-        test('dropdown listbox element have accessibility properties', () => {
-          expect(listbox.role).toBe('listbox')
-          expect(listbox.ariaLive).toBe('polite')
-          expect(listbox.ariaMultiSelectable).toBe('false')
-        })
-      })
-
-      describe('With multiple select', () => {
-        beforeEach(async () => {
-          render(<Select options={ options } placeholder='Test placeholder' multiple={ true } expanded={ true } />)
-          listbox = screen.getByRole('listbox')
-        })
-
-        test('listbox element aria multiselect is true', () => {
-          expect(listbox.ariaMultiSelectable).toBe('true')
-        })
+      test('listbox element aria multiselect is true', () => {
+        expect(listbox.ariaMultiSelectable).toBe('true')
       })
     })
   })

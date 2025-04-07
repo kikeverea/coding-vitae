@@ -50,6 +50,12 @@
   width: calc(100% - 32px);
 }
 
+.optionGroupLabel {
+  padding-top: 16px;
+  font-size: 1.125rem;
+  font-weight: bold;
+}
+
 .noDataMessage {
   text-align: center;
 }

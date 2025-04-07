@@ -3,7 +3,8 @@ import { FC, MouseEvent } from 'react'
 
 export type OptionType = {
   name: string
-  value: string
+  value: string,
+  group?: string
 }
 
 type OptionProps = {
