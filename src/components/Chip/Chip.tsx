@@ -3,12 +3,15 @@ import { FC, MouseEvent, ReactNode, useState } from 'react'
 
 type ChipProps = {
   label: string
+  onSelected?: () => void
   icon?: ReactNode
   removeIcon?: ReactNode
   selectedIcon?: ReactNode
   selectable?: boolean
+  selected?: boolean
   removable?: boolean,
-  onRemove?: () => void,
+  beforeRemove?: (e: MouseEvent) => void,
+  onRemove?: (e: MouseEvent) => void,
   chipStyle?: 'outline' | 'solid'
   color?: string,
   borderColor?: string,
@@ -24,8 +27,11 @@ const Chip: FC<ChipProps> = ({
   removeIcon,
   selectedIcon,
   selectable=false,
+  selected: isSelected=false,
   removable=false,
+  beforeRemove,
   onRemove,
+  onSelected,
   chipStyle='outline',
   color='#6C6C6C',
   borderColor,
@@ -35,16 +41,21 @@ const Chip: FC<ChipProps> = ({
     throw new Error(`Selectable: ${ selectable }, removable: ${removable}.
       Chip can be either selectable or removable, not both at the same`)
 
-  const [selected, setSelected] = useState(false)
+  const [selected, setSelected] = useState(isSelected)
 
-  const selectableIcon = selectable && (selectedIcon || defaultSelectedIcon)
+  const selectableIcon = selectedIcon || icon || defaultSelectedIcon
   const leadingIcon = selected ? selectableIcon : icon
   const trailingIcon = removable && (removeIcon || defaultRemoveIcon)
 
   const toggleChip = (): void => {
-    if (selectable)
+    if (selectable) {
       setSelected(!selected)
+      onSelected && onSelected()
+    }
   }
+
+  const handleOnRemovePress = (e: MouseEvent) => beforeRemove && beforeRemove(e)
+  const handleOnRemoveClick = (e: MouseEvent) => onRemove && onRemove(e)
 
   return (
     <div
@@ -56,17 +67,25 @@ const Chip: FC<ChipProps> = ({
       }}
       data-testid='chip'
       onClick={ toggleChip }
-      role={ selectable ? 'button' : ''}
+      role={ selectable ? 'button' : '' }
       aria-selected={ selected }
     >
-      { leadingIcon && <span className={styles.leadingIcon} style={{ color: iconColor }}>{ leadingIcon }</span> }
-      <span className={styles.label}>{label}</span>
+      { leadingIcon &&
+        <span className={ styles.leadingIcon } style={{ color: iconColor }}>
+          { leadingIcon }
+        </span>
+      }
+      <span className={ styles.label }>
+        { label }
+      </span>
       { trailingIcon &&
         <span
           className={ styles.trailingIcon }
-          onClick={ onRemove }
+          onMouseDown={ handleOnRemovePress }
+          onClick={ handleOnRemoveClick }
           role='button'
           aria-label='remove this option'
+          tabIndex={ 0 }
         >
           { trailingIcon }
         </span>

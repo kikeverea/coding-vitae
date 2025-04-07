@@ -1,4 +1,4 @@
-import {render, screen} from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { userEvent, UserEvent } from '@testing-library/user-event'
 import { vi } from 'vitest'
 import Chip from './Chip.tsx'
@@ -75,6 +75,16 @@ describe('Chip', () => {
       expect(renderedIcon).toBeNull()
     })
 
+    test('if selected, call on selected', async () => {
+      const onSelected = vi.fn()
+
+      render(<Chip label='Chip test' selectable={ true } onSelected={ onSelected } />)
+
+      const chip = screen.getByTestId('chip')
+      await user.click(chip)
+
+      expect(onSelected).toHaveBeenCalledTimes(1)
+    })
 
     test('if selected, render selected icon', async () => {
       const selectedIcon = <i className="fa-solid fa-circle-user test-icon" data-testid='my-test-icon'></i>
@@ -122,6 +132,16 @@ describe('Chip', () => {
       expect(notRenderedIcon).toBeNull()
     })
 
+    test('if initially selected, render as selected', async () => {
+      render(<Chip label='Chip test' selectable={ true } selected={ true } />)
+
+      const chip = screen.getByTestId('chip')
+      const renderedIcon = screen.getByTestId('selected-icon')
+
+      expect(renderedIcon).toBeDefined()
+      expect(chip.ariaSelected).toBe('true')
+    })
+
     // Follows Font Awesome recommendations on accessibility
     test('default selected icon has role img and aria hidden true', async () => {
       render(<Chip label='Chip test' selectable={ true } selected={ true } />)
@@ -159,6 +179,16 @@ describe('Chip', () => {
 
     test('removable icon has role button and aria label', () => {
       render(<Chip label='Chip test' removable={ true } />)
+    })
+
+    test('on remove icon mouse down, call goingToRemove prop', async () => {
+      const goingToRemove = vi.fn()
+      render(<Chip label='Chip test' removable={ true } beforeRemove={ goingToRemove } />)
+
+      const removeButton = screen.getByRole('button')
+      await user.click(removeButton)
+
+      expect(goingToRemove).toHaveBeenCalledTimes(1)
     })
 
     test('if remove icon is clicked, call onRemove prop', async () => {
