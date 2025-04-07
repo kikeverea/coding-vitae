@@ -34,7 +34,7 @@ describe('Select', () => {
 
   describe('With no options', () => {
     test('without options, renders empty message', () => {
-      render(<Select options={[]} isExpanded={ true }/>)
+      render(<Select options={[]} expanded={ true }/>)
 
       optionElements = screen.getAllByRole('option')
 
@@ -43,7 +43,7 @@ describe('Select', () => {
     })
 
     test('without options, and a given empty message, renders said message', () => {
-      render(<Select options={[]} isExpanded={ true } noDataMessage='empty message'/>)
+      render(<Select options={[]} expanded={ true } noDataMessage='empty message'/>)
 
       optionElements = screen.getAllByRole('option')
       expect(optionElements[0].textContent).toBe('empty message')
@@ -83,7 +83,7 @@ describe('Select', () => {
   describe('With expanded dropdown', () => {
 
     beforeEach(async () => {
-      render(<Select options={ options } placeholder={ 'Test placeholder' } isExpanded={ true }/>)
+      render(<Select options={ options } placeholder={ 'Test placeholder' } expanded={ true }/>)
       selectElement = screen.getByRole('combobox')
       optionElements = screen.getAllByRole('option')
     })
@@ -310,7 +310,7 @@ describe('Select', () => {
   describe('With expanded dropdown and tag creation enabled', () => {
 
     beforeEach(async () => {
-      render(<Select options={ options } isExpanded={ true } tagCreation={ true }/>)
+      render(<Select options={ options } expanded={ true } tagCreation={ true }/>)
       selectElement = screen.getByRole('combobox')
     })
 
@@ -403,7 +403,7 @@ describe('Select', () => {
     describe('With expanded dropdown', () => {
 
       beforeEach(async () => {
-        render(<Select options={ options } placeholder='Test placeholder' multiple={ true } isExpanded={ true } />)
+        render(<Select options={ options } placeholder='Test placeholder' multiple={ true } expanded={ true } />)
         selectElement = screen.getByRole('combobox')
         optionElements = screen.queryAllByRole('option')
       })
@@ -535,7 +535,7 @@ describe('Select', () => {
 
     describe('Keyboard navigation and Focus', () => {
       beforeEach(async () => {
-        render(<Select options={ options } placeholder='Test placeholder' isExpanded={ true } />)
+        render(<Select options={ options } placeholder='Test placeholder' expanded={ true } />)
         selectElement = screen.getByRole('combobox')
         listbox = screen.getByRole('listbox')
         optionElements = screen.queryAllByRole('option')
@@ -645,7 +645,7 @@ describe('Select', () => {
 
       describe('With expanded dropdown', () => {
         beforeEach(async () => {
-          render(<Select options={ options } placeholder='Test placeholder' isExpanded={ true } />)
+          render(<Select options={ options } placeholder='Test placeholder' expanded={ true } />)
           selectElement = screen.getByRole('combobox')
           listbox = screen.getByRole('listbox')
           optionElements = screen.queryAllByRole('option')
@@ -688,7 +688,7 @@ describe('Select', () => {
 
       describe('With multiple select', () => {
         beforeEach(async () => {
-          render(<Select options={ options } placeholder='Test placeholder' multiple={ true } isExpanded={ true } />)
+          render(<Select options={ options } placeholder='Test placeholder' multiple={ true } expanded={ true } />)
           listbox = screen.getByRole('listbox')
         })
 
