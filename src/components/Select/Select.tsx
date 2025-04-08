@@ -4,10 +4,10 @@ import styles from './Select.module.css'
 import Option, { OptionType } from './Option'
 
 type OptionSeparator = {
-  separator: 'hr' | ReactNode
+  separator: true | FC | ReactNode
 }
 
-type OptionOrSeparator = OptionType | OptionSeparator
+export type OptionOrSeparator = OptionType | OptionSeparator
 
 type SelectProps = {
   options: OptionOrSeparator[]
@@ -90,8 +90,6 @@ const Select: FC<SelectProps> = ({
   const handleOptionClicked = (e: MouseEvent, option: OptionType) => {
     const isSelected = selectionSet.has(option.value)
 
-    console.log('is selected')
-
     if (isSelected)
       unselectOption(e, option)
     else
@@ -107,29 +105,26 @@ const Select: FC<SelectProps> = ({
   }
 
   const selectOption = (selectedOption: OptionType) => {
-    console.log('select option')
-
     const isTagCreation = selectedOption.name == tagCreationPrompt(search)
+    let selectedOptionIndex: number
 
     if (isTagCreation) {
       selectedOption.name = search
+      createdOptions.current.push(selectedOption)
+      const optionCount = createdOptions.current.length + options.length -1
+      selectedOptionIndex = optionCount -1
     }
+    else selectedOptionIndex = options.findIndex(
+      option => isOption(option) && option.value === selectedOption.value)
 
     if (isMultiple(selection))
       setSelection([ ...(selection || []), selectedOption ])
     else
       setSelection(selectedOption)
 
-    const selectedOptionIndex = options.findIndex(
-      option => isOption(option) && option.value === selectedOption.value)
-
-    console.log('options', options)
-    console.log('selected option index', selectedOptionIndex)
-
     setSearch('')
     setExpanded(multiple)
     setFocusedOptionIndex(selectedOptionIndex)
-    isTagCreation && createdOptions.current.push(selectedOption)
   }
 
   const unselectOption = (e: MouseEvent, selectedOption: OptionType) => {
@@ -224,8 +219,6 @@ const Select: FC<SelectProps> = ({
 
   // Safe to cast, focused option index always points to an OptionType
   const focusedOption = options[focusedOptionIndex] as OptionType
-
-  console.log('index', focusedOptionIndex)
 
   return (
     <div
@@ -322,7 +315,7 @@ const Select: FC<SelectProps> = ({
 
                   if (!isOption(item)) {
                     items.push(
-                      item.separator === 'hr'
+                      item.separator === true
                         ? <hr />
                         : item.separator
                     )
