@@ -1,23 +1,49 @@
-import {FC, MouseEvent, KeyboardEvent, useRef, useState, useEffect, ReactNode} from 'react'
+import { FC, MouseEvent, KeyboardEvent, useRef, useState, useEffect, ReactNode } from 'react'
 import Chip from '../Chip/Chip.tsx'
 import styles from './Select.module.css'
 import Option, { OptionType } from './Option'
 
+type OptionSeparator = {
+  separator: 'hr' | ReactNode
+}
+
+type OptionOrSeparator = OptionType | OptionSeparator
+
 type SelectProps = {
-  options: OptionType[],
-  name?: string,
-  initialValue?: string | string[],
-  expanded?: boolean,
-  tagCreation?: boolean | ((name: string) => Promise<OptionType>),
-  placeholder?: string,
-  noDataMessage?: string,
-  multiple?: boolean,
+  options: OptionOrSeparator[]
+  name?: string
+  initialValue?: string | string[]
+  expanded?: boolean
+  tagCreation?: boolean | ((name: string) => Promise<OptionType>)
+  placeholder?: string
+  noDataMessage?: string
+  multiple?: boolean
 }
 
 const tagCreationPrompt = (optionName: string): string => `Create ${optionName}`
 const clearButtonIcon = <svg className={ styles.buttonIcon } role='img' aria-hidden='true' xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z"/></svg>
 const expandButtonIcon = <svg className={ `${styles.buttonIcon} ${styles.dropdownIcon}` } role='img' aria-hidden='true' xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg>
 const collapseButtonIcon = <svg className={ `${styles.buttonIcon} ${styles.dropdownIcon}` } role='img' aria-hidden='true' xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M233.4 105.4c12.5-12.5 32.8-12.5 45.3 0l192 192c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L256 173.3 86.6 342.6c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3l192-192z"/></svg>
+const isOption = (option: any): option is OptionType => !('separator' in option)
+
+const nextOptionIndex = (options: OptionOrSeparator[], currentIndex: number): number => {
+  let nextIndex = currentIndex
+
+  do nextIndex++
+  while (nextIndex < options.length && !isOption(options[nextIndex]))
+
+  return Math.min(nextIndex, options.length - 1)
+}
+
+const previousOptionIndex = (options: OptionOrSeparator[], currentIndex: number): number => {
+  let previousIndex = currentIndex
+
+  do previousIndex--
+  while (previousIndex >= 0 && !isOption(options[previousIndex]))
+
+  return Math.max(previousIndex, 0)
+}
+
 
 const Select: FC<SelectProps> = ({
   name,
@@ -30,16 +56,14 @@ const Select: FC<SelectProps> = ({
   noDataMessage='No data available'
 }) => {
 
-  const isMultiple = (_selection: any): _selection is OptionType[] => multiple
-
   const [ search, setSearch ] = useState('')
   const [ expanded, setExpanded ] = useState(isExpanded)
   const [ focusedOptionIndex, setFocusedOptionIndex ] = useState(0)
   const [ selection, setSelection ] = useState<OptionType | OptionType[] | null>(
     () => initialValue
       ? multiple
-        ? options.filter(option => initialValue.includes(option.value)) || null
-        : options.find(option => initialValue === option.value) || null
+        ? options.filter(option => isOption(option) && initialValue.includes(option.value)) as OptionType[] || null
+        : options.find(option => isOption(option) && initialValue === option.value) as OptionType || null
       : null
   )
 
@@ -51,6 +75,7 @@ const Select: FC<SelectProps> = ({
     inputRef.current?.focus()
   }, [expanded])
 
+  const isMultiple = (_selection: any): _selection is OptionType[] => multiple
   let ignoreBlurEvent = false
 
   // Optimize querying for selected options. Prevent O(nm) on large option sets
@@ -65,6 +90,8 @@ const Select: FC<SelectProps> = ({
   const handleOptionClicked = (e: MouseEvent, option: OptionType) => {
     const isSelected = selectionSet.has(option.value)
 
+    console.log('is selected')
+
     if (isSelected)
       unselectOption(e, option)
     else
@@ -72,32 +99,37 @@ const Select: FC<SelectProps> = ({
   }
 
   const handleOptionHover =  (_e: MouseEvent, option: OptionType) => {
+
     const index = filteredOptions.findIndex(
-      filteredOption => filteredOption.value === option.value)
+      filteredOption => isOption(filteredOption) && filteredOption.value === option.value)
 
     setFocusedOptionIndex(index)
   }
 
   const selectOption = (selectedOption: OptionType) => {
+    console.log('select option')
+
     const isTagCreation = selectedOption.name == tagCreationPrompt(search)
 
-    const option = {
-      name: isTagCreation ? search : selectedOption.name || '',
-      value: selectedOption.value || ''
+    if (isTagCreation) {
+      selectedOption.name = search
     }
 
-    const index = filteredOptions.findIndex(
-      filteredOption => filteredOption.value === option.value)
-
     if (isMultiple(selection))
-      setSelection([ ...(selection || []), option ])
+      setSelection([ ...(selection || []), selectedOption ])
     else
-      setSelection(option)
+      setSelection(selectedOption)
+
+    const selectedOptionIndex = options.findIndex(
+      option => isOption(option) && option.value === selectedOption.value)
+
+    console.log('options', options)
+    console.log('selected option index', selectedOptionIndex)
 
     setSearch('')
     setExpanded(multiple)
-    setFocusedOptionIndex(index)
-    isTagCreation && createdOptions.current.push(option)
+    setFocusedOptionIndex(selectedOptionIndex)
+    isTagCreation && createdOptions.current.push(selectedOption)
   }
 
   const unselectOption = (e: MouseEvent, selectedOption: OptionType) => {
@@ -116,20 +148,20 @@ const Select: FC<SelectProps> = ({
     setSelection(newSelection.length > 0 ? newSelection : null)
   }
 
-  const handleKeyNavigation = (e: KeyboardEvent<HTMLDivElement>, options: OptionType[]) => {
+  const handleKeyNavigation = (e: KeyboardEvent<HTMLDivElement>, options: OptionOrSeparator[]) => {
     switch (e.key) {
       case 'ArrowDown':
         // Move focus down (next option)
-        setFocusedOptionIndex((prevIndex) => Math.min(prevIndex + 1, options.length - 1));
+        setFocusedOptionIndex(nextOptionIndex(filteredOptions, focusedOptionIndex))
         break
       case 'ArrowUp':
         // Move focus up (previous option)
-        setFocusedOptionIndex((prevIndex) => Math.max(prevIndex - 1, 0))
+        setFocusedOptionIndex(previousOptionIndex(filteredOptions, focusedOptionIndex))
         break
       case 'Enter':
         if (focusedOptionIndex >= 0 && focusedOptionIndex < options.length) {
-          selectOption(options[focusedOptionIndex])
-          setExpanded(false)  // Close the dropdown after selection
+          const focusedOption = options[focusedOptionIndex] as OptionType   // Safe to cast, focused option index always points to an OptionType
+          selectOption(focusedOption)
         }
         break
       case 'Escape':
@@ -185,10 +217,15 @@ const Select: FC<SelectProps> = ({
   }
 
   const filteredOptions = [...options, ...createdOptions.current].filter(
-    option => option.name.toLowerCase().includes(search.toLowerCase()))
+    option => !isOption(option) || option.name.toLowerCase().includes(search.toLowerCase()))
 
   if (filteredOptions.length === 0 && tagCreation)
     filteredOptions.push({ name: tagCreationPrompt(search), value: search.toLowerCase().replace(/\s/g, '-') })
+
+  // Safe to cast, focused option index always points to an OptionType
+  const focusedOption = options[focusedOptionIndex] as OptionType
+
+  console.log('index', focusedOptionIndex)
 
   return (
     <div
@@ -197,7 +234,7 @@ const Select: FC<SelectProps> = ({
       aria-haspopup='listbox'
       aria-owns="select__dropdown-list"
       aria-controls="select__dropdown-list"
-      aria-activedescendant={ options.length > 0 ? `select__option-${options[focusedOptionIndex].value}` : '' }
+      aria-activedescendant={ options.length > 0 ? `select__option-${focusedOption.value }` : '' }
       aria-expanded={ expanded }
       onClick={ toggleDropdown }
       onMouseDown={ setIgnoreBlurEvent }
@@ -280,19 +317,30 @@ const Select: FC<SelectProps> = ({
           >
             { filteredOptions.length > 0
               ? filteredOptions.reduce(
-                ([options, group]: [ReactNode[], string], option: OptionType, index: number): [ReactNode[], string] =>
+                ([items, group]: [ReactNode[], string], item: OptionOrSeparator, index: number): [ReactNode[], string] =>
                 {
+
+                  if (!isOption(item)) {
+                    items.push(
+                      item.separator === 'hr'
+                        ? <hr />
+                        : item.separator
+                    )
+                    return [items, group]
+                  }
+
+                  const option = item
                   const optionGroup = option.group || ''
 
                   if (optionGroup && optionGroup !== group) {
-                    options.push(
+                    items.push(
                       <div key={ optionGroup } className={ styles.optionGroupLabel } aria-label={ optionGroup }>
                         { optionGroup }
                       </div>
                     )
                   }
 
-                  options.push(
+                  items.push(
                     <Option
                       key={ option.value }
                       option={ option }
@@ -303,7 +351,8 @@ const Select: FC<SelectProps> = ({
                       onHover={ e => handleOptionHover(e, option) }
                     />
                   )
-                  return [options, optionGroup || '']
+                  return [items, optionGroup || '']
+
                 }, [[], ''])
                 [0]
               : <div role='option' className={ styles.noDataMessage } aria-label='no data avaliable'>
