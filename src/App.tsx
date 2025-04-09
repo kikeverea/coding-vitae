@@ -18,6 +18,18 @@ function App() {
             { name: "Lion", value: "option-3" }
           ]}
           placeholder='Select an option'
+          tagCreation={ true }
+        />
+
+        <Select
+          options={[
+            { name: "Tiger", value: "option-1" },
+            { name: "Tiger cat", value: "option-2" },
+            { name: "Lion", value: "option-3" }
+          ]}
+          placeholder='Select multiple options'
+          initialValue='option-3'
+          multiple={ true }
         />
       </div>
     </>

@@ -1,23 +1,24 @@
 import {fireEvent, render, screen, within} from '@testing-library/react'
-import Select from './Select.tsx'
-import { OptionType as Option } from './Option.tsx'
+import Select from './Select'
+import { OptionOrGroup } from './OptionTypes'
 import { userEvent, UserEvent } from '@testing-library/user-event'
 import { JSX } from 'react'
+import {Mock, vi} from 'vitest'
 
 
 describe('Select', () => {
 
-  const options: Option[] = [
+  const options: OptionOrGroup[] = [
     { name: "Option 1", value: "option-1" },
     { name: "Option 2", value: "option-2" },
     { name: "Option 3", value: "option-3" }
   ]
 
-  const groupedOptions: Option[] = [
+  const groupedOptions: OptionOrGroup[] = [
     { name: "Option 1", value: "option-1" },
     { name: "Option 2", value: "option-2" },
-    { name: "Option 3", value: "option-3", group: 'Test group' },
-    { name: "Option 4", value: "option-4", group: 'Test group' }
+    { name: "Option 3", value: "option-3" },
+    { name: "Option 4", value: "option-4" }
   ]
 
   let selectElement: HTMLElement
@@ -316,8 +317,11 @@ describe('Select', () => {
 
   describe('With expanded dropdown and tag creation enabled', () => {
 
+    let onOptionCreated: Mock
+
     beforeEach(async () => {
-      render(<Select options={ options } expanded={ true } tagCreation={ true }/>)
+      onOptionCreated = vi.fn()
+      render(<Select options={ options } expanded={ true } tagCreation={ true } onOptionCreated={ onOptionCreated } />)
       selectElement = screen.getByRole('combobox')
     })
 
@@ -358,6 +362,21 @@ describe('Select', () => {
         option.textContent === optionName && option.value === dasherize(optionName)
       )
       expect(tagCreatedOption).not.toBeNull()
+    })
+
+    test('creating an option calls onOptionCreated if present', () => {
+      const optionName = `Does not exist ${options[randomIndex()].name}`
+      const searchbox = screen.getByRole('searchbox')
+
+      // Filter options
+      await user.type(searchbox, optionName)
+      const optionElements = screen.getAllByRole('option')
+
+      // Click on 'Create option xxx'
+      const tagCreationElement = optionElements[0]
+      await user.click(tagCreationElement)
+
+      expect(onOptionCreated).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -588,7 +607,7 @@ describe('Select', () => {
       expect(selectElement.getAttribute('aria-activedescendant')).toBe(`select__option-${options[2].value}`)
     })
 
-    test('"arrow up" focuses the next option', () => {
+    test('"arrow up" focuses the previous option', () => {
       // Move focus to the last option
       for (let i = 0; i < 2; i++)
         fireEvent.keyDown(selectElement, { key: 'ArrowDown' })

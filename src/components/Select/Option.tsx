@@ -1,11 +1,6 @@
 import styles from './Option.module.css'
 import { FC, MouseEvent } from 'react'
-
-export type OptionType = {
-  name: string
-  value: string,
-  group?: string
-}
+import { OptionType } from './OptionTypes.tsx'
 
 type OptionProps = {
   option: OptionType
