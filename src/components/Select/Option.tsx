@@ -3,9 +3,15 @@ import { FC, MouseEvent } from 'react'
 
 export type OptionType = {
   name: string
-  value: string,
-  group?: string
+  value: string
 }
+
+export type OptionGroup = {
+  group: string
+  options: OptionType[]
+}
+
+export type OptionOrGroup = OptionType | OptionGroup
 
 type OptionProps = {
   option: OptionType
