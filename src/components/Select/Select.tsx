@@ -1,10 +1,10 @@
 import {FC, MouseEvent, KeyboardEvent, useRef, useState, useEffect, ReactNode} from 'react'
 import Chip from '../Chip/Chip.tsx'
 import styles from './Select.module.css'
-import Option, {OptionGroup, OptionOrGroup, OptionType} from './Option'
+import Option, { OptionType } from './Option'
 
 type SelectProps = {
-  options: OptionOrGroup[],
+  options: OptionType[],
   name?: string,
   initialValue?: string | string[],
   expanded?: boolean,
@@ -18,33 +18,6 @@ const tagCreationPrompt = (optionName: string): string => `Create ${optionName}`
 const clearButtonIcon = <svg className={ styles.buttonIcon } role='img' aria-hidden='true' xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z"/></svg>
 const expandButtonIcon = <svg className={ `${styles.buttonIcon} ${styles.dropdownIcon}` } role='img' aria-hidden='true' xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg>
 const collapseButtonIcon = <svg className={ `${styles.buttonIcon} ${styles.dropdownIcon}` } role='img' aria-hidden='true' xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M233.4 105.4c12.5-12.5 32.8-12.5 45.3 0l192 192c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L256 173.3 86.6 342.6c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3l192-192z"/></svg>
-
-const isGroup = (_optionOrGroup: OptionOrGroup): _optionOrGroup is OptionGroup => 'group' in _optionOrGroup
-
-function findOptionsWithValue (value: string[], options: OptionOrGroup[], multiple: true): OptionType[]
-function findOptionsWithValue (value: string, options: OptionOrGroup[], multiple: false): OptionType
-function findOptionsWithValue (value: string | string[], options: OptionOrGroup[], multiple: boolean): OptionType | OptionType[] {
-
-  const found = options.reduce((found: OptionType[], option: OptionOrGroup): OptionType[] => {
-    if (isGroup(option)) {
-      const foundInGroup = option.options.filter(option => optionHasValue(option, value)) || []
-      return [...found, ...foundInGroup]
-    }
-    else {
-      const valueMatches = optionHasValue(option, value)
-      return valueMatches ? [...found, option] : found
-    }
-  },
-  [])
-
-  return multiple ? found : found[0]
-}
-
-const optionHasValue = (option: OptionType, value: string | string[]): boolean => {
-  return Array.isArray(value)
-    ? value.includes(option.value)
-    : value === option.value
-}
 
 const Select: FC<SelectProps> = ({
   name,
@@ -65,8 +38,8 @@ const Select: FC<SelectProps> = ({
   const [ selection, setSelection ] = useState<OptionType | OptionType[] | null>(
     () => initialValue
       ? multiple
-        ? findOptionsWithValue(initialValue as string[], options, true)
-        : findOptionsWithValue(initialValue as string, options, false)
+        ? options.filter(option => initialValue.includes(option.value)) || null
+        : options.find(option => initialValue === option.value) || null
       : null
   )
 
@@ -99,15 +72,6 @@ const Select: FC<SelectProps> = ({
   }
 
   const handleOptionHover =  (_e: MouseEvent, option: OptionType) => {
-    for (let i = 0; i < filteredOptions.length; i++) {
-      const filteredOption = filteredOptions[i]
-
-      // TODO continue here.. handle selected index inside option groups
-      // perhaps selectionIndex: number | [number, number] ([group_index, index_inside_group])
-
-      const index = isGroup(filteredOption)
-    }
-
     const index = filteredOptions.findIndex(
       filteredOption => filteredOption.value === option.value)
 

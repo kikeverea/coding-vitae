@@ -345,6 +345,7 @@ describe('Select', () => {
 
       // Click on 'Create option xxx' (this collapses the dropdown)
       const tagCreationElement = optionElements[0]
+      console.log('click!')
       await user.click(tagCreationElement)
 
       const selectedOption = screen.getByTestId('display-content')
@@ -588,7 +589,7 @@ describe('Select', () => {
       expect(selectElement.getAttribute('aria-activedescendant')).toBe(`select__option-${options[2].value}`)
     })
 
-    test('"arrow up" focuses the next option', () => {
+    test('"arrow up" focuses the previous option', () => {
       // Move focus to the last option
       for (let i = 0; i < 2; i++)
         fireEvent.keyDown(selectElement, { key: 'ArrowDown' })
