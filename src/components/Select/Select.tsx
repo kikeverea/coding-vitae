@@ -1,16 +1,10 @@
 import {FC, MouseEvent, KeyboardEvent, useRef, useState, useEffect, ReactNode} from 'react'
 import Chip from '../Chip/Chip.tsx'
 import styles from './Select.module.css'
-import Option, { OptionType } from './Option'
-
-type OptionSeparator = {
-  separator: true | FC | ReactNode
-}
-
-export type OptionOrSeparator = OptionType | OptionSeparator
+import Option, {OptionGroup, OptionOrGroup, OptionType} from './Option'
 
 type SelectProps = {
-  options: OptionType[],
+  options: OptionOrGroup[],
   name?: string,
   initialValue?: string | string[],
   expanded?: boolean,
@@ -25,27 +19,72 @@ const clearButtonIcon = <svg className={ styles.buttonIcon } role='img' aria-hid
 const expandButtonIcon = <svg className={ `${styles.buttonIcon} ${styles.dropdownIcon}` } role='img' aria-hidden='true' xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg>
 const collapseButtonIcon = <svg className={ `${styles.buttonIcon} ${styles.dropdownIcon}` } role='img' aria-hidden='true' xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M233.4 105.4c12.5-12.5 32.8-12.5 45.3 0l192 192c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L256 173.3 86.6 342.6c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3l192-192z"/></svg>
 
+const isGroup = (_optionOrGroup: OptionOrGroup): _optionOrGroup is OptionGroup => 'group' in _optionOrGroup
+
+function findOptionsWithValue (value: string[], options: OptionOrGroup[], multiple: true): OptionType[]
+function findOptionsWithValue (value: string, options: OptionOrGroup[], multiple: false): OptionType
+function findOptionsWithValue (value: string | string[], options: OptionOrGroup[], multiple: boolean): OptionType | OptionType[] {
+
+  const found = options.reduce((found: OptionType[], option: OptionOrGroup): OptionType[] => {
+      if (isGroup(option)) {
+        const foundInGroup = option.options.filter(option => optionHasValue(option, value)) || []
+        return [...found, ...foundInGroup]
+      }
+      else {
+        const valueMatches = optionHasValue(option, value)
+        return valueMatches ? [...found, option] : found
+      }
+    },
+    [])
+
+  return multiple ? found : found[0]
+}
+
+function findOptionIndex (findOption: OptionType, options: OptionOrGroup[]): number | [number, number] {
+  for (let i = 0; i < options.length; i++) {
+    const option = options[i]
+
+    if (isGroup(option)) {
+      const index = option.options.findIndex(groupOption => groupOption.value === findOption.value)
+
+      if (index !== -1)
+        return [i, index]
+    }
+    else if (option.value === findOption.value) {
+      return i
+    }
+  }
+
+  return options.length -1
+}
+
+const optionHasValue = (option: OptionType, value: string | string[]): boolean => {
+  return Array.isArray(value)
+    ? value.includes(option.value)
+    : value === option.value
+}
+
 const Select: FC<SelectProps> = ({
-  name,
-  initialValue,
-  options,
-  placeholder='',
-  expanded: isExpanded=false,
-  tagCreation=false,
-  multiple=false,
-  noDataMessage='No data available'
-}) => {
+                                   name,
+                                   initialValue,
+                                   options,
+                                   placeholder='',
+                                   expanded: isExpanded=false,
+                                   tagCreation=false,
+                                   multiple=false,
+                                   noDataMessage='No data available'
+                                 }) => {
 
   const isMultiple = (_selection: any): _selection is OptionType[] => multiple
 
   const [ search, setSearch ] = useState('')
   const [ expanded, setExpanded ] = useState(isExpanded)
-  const [ focusedOptionIndex, setFocusedOptionIndex ] = useState(0)
+  const [ focusedOptionIndex, setFocusedOptionIndex ] = useState(isGroup(options[0]) ? [0, 0] : 0)
   const [ selection, setSelection ] = useState<OptionType | OptionType[] | null>(
     () => initialValue
       ? multiple
-        ? options.filter(option => initialValue.includes(option.value)) || null
-        : options.find(option => initialValue === option.value) || null
+        ? findOptionsWithValue(initialValue as string[], options, true)
+        : findOptionsWithValue(initialValue as string, options, false)
       : null
   )
 
@@ -63,9 +102,9 @@ const Select: FC<SelectProps> = ({
   const selectionSet: Set<string> =
     selection
       ? new Set(isMultiple(selection)
-          ? selection.map(option => option.value)
-          : [selection?.value]
-        )
+        ? selection.map(option => option.value)
+        : [selection?.value]
+      )
       : new Set()
 
   const handleOptionClicked = (e: MouseEvent, option: OptionType) => {
@@ -77,37 +116,30 @@ const Select: FC<SelectProps> = ({
       selectOption(option)
   }
 
-  const handleOptionHover =  (_e: MouseEvent, option: OptionType) => {
-    const index = filteredOptions.findIndex(
-      filteredOption => filteredOption.value === option.value)
-
-    setFocusedOptionIndex(index)
+  const handleOptionHover =  (_e: MouseEvent, option: OptionType): void=> {
+    const hoveredOptionIndex = findOptionIndex(option, options)
+    setFocusedOptionIndex(hoveredOptionIndex)
   }
 
   const selectOption = (selectedOption: OptionType) => {
     const isTagCreation = selectedOption.name == tagCreationPrompt(search)
-    let selectedOptionIndex: number
 
-    if (isTagCreation) {
-      selectedOption.name = search
-      createdOptions.current.push(selectedOption)
-      const optionCount = createdOptions.current.length + options.length -1
-      selectedOptionIndex = optionCount -1
+    const option = {
+      name: isTagCreation ? search : selectedOption.name || '',
+      value: selectedOption.value || ''
     }
-    else selectedOptionIndex = options.findIndex(
-      option => isOption(option) && option.value === selectedOption.value)
 
-    const index = filteredOptions.findIndex(
-      filteredOption => filteredOption.value === option.value)
+    const index = findOptionIndex(option, options)
 
     if (isMultiple(selection))
       setSelection([ ...(selection || []), option ])
     else
-      setSelection(selectedOption)
+      setSelection(option)
 
     setSearch('')
     setExpanded(multiple)
-    setFocusedOptionIndex(selectedOptionIndex)
+    setFocusedOptionIndex(index)
+    isTagCreation && createdOptions.current.push(option)
   }
 
   const unselectOption = (e: MouseEvent, selectedOption: OptionType) => {
@@ -149,6 +181,52 @@ const Select: FC<SelectProps> = ({
       default:
         break
     }
+  }
+
+  const nextIndex = (index: number | [number, number]): number | [number, number] => {
+    const isGroupIndex = Array.isArray(index)
+
+    if (isGroupIndex) {
+      let [groupIndex, optionIndex] = index
+      const optionGroup = options[groupIndex] as OptionGroup
+      const groupOptions = optionGroup.options
+
+      const nextGroupIndex = groupIndex + 1
+      const nextOptionIndex = optionIndex + 1
+      const moveToNextGroup = nextOptionIndex === groupOptions.length
+      const isLastGroup = nextGroupIndex === options.length
+
+      return moveToNextGroup
+        ? isLastGroup
+          ? [groupIndex, optionIndex]   // remain unchanged
+          : [nextGroupIndex, 0]         // move to first option in next group
+        : [groupIndex, nextOptionIndex] // move to next option in same group
+    }
+
+    return Math.min(index + 1, options.length - 1)
+  }
+
+  const previousIndex = (index: number | [number, number]): number | [number, number] => {
+    const isGroupIndex = Array.isArray(index)
+
+    if (isGroupIndex) {
+      let [groupIndex, optionIndex] = index
+      const optionGroup = options[groupIndex] as OptionGroup
+
+      const previousGroupIndex = groupIndex - 1
+      const previousOptionIndex = optionIndex - 1
+      const moveToPreviousGroup = previousOptionIndex === -1
+      const isFirstGroup = previousGroupIndex === -1
+      const previousGroup = options[previousGroupIndex] as OptionGroup
+
+      return moveToPreviousGroup
+        ? isFirstGroup
+          ? [groupIndex, optionIndex]                               // remain unchanged
+          : [previousGroupIndex, previousGroup.options.length -1]   // move to last option in previous group
+        : [groupIndex, previousOptionIndex]                         // move to previous option in same group
+    }
+
+    return Math.min(index + 1, options.length - 1)
   }
 
   const filterOptions = (e: MouseEvent<HTMLInputElement> ) => {
@@ -200,9 +278,6 @@ const Select: FC<SelectProps> = ({
   if (filteredOptions.length === 0 && tagCreation)
     filteredOptions.push({ name: tagCreationPrompt(search), value: search.toLowerCase().replace(/\s/g, '-') })
 
-  // Safe to cast, focused option index always points to an OptionType
-  const focusedOption = options[focusedOptionIndex] as OptionType
-
   return (
     <div
       role='combobox'
@@ -233,7 +308,7 @@ const Select: FC<SelectProps> = ({
                     beforeRemove={ setIgnoreBlurEvent }
                     onRemove={ e => removeOption(e, option) }
                   />)}
-                </>
+              </>
               : selection.name
             : placeholder
           }
@@ -295,7 +370,6 @@ const Select: FC<SelectProps> = ({
               ? filteredOptions.reduce(
                 ([options, group]: [ReactNode[], string], option: OptionType, index: number): [ReactNode[], string] =>
                 {
-
                   const optionGroup = option.group || ''
 
                   if (optionGroup && optionGroup !== group) {
@@ -321,8 +395,8 @@ const Select: FC<SelectProps> = ({
                 }, [[], ''])
                 [0]
               : <div role='option' className={ styles.noDataMessage } aria-label='no data avaliable'>
-                  { noDataMessage }
-                </div>
+                { noDataMessage }
+              </div>
             }
           </div>
         </div>
