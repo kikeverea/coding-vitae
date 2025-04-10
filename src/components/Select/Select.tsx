@@ -3,6 +3,12 @@ import Chip from '../Chip/Chip.tsx'
 import styles from './Select.module.css'
 import Option, { OptionType } from './Option'
 
+type OptionSeparator = {
+  separator: true | FC | ReactNode
+}
+
+export type OptionOrSeparator = OptionType | OptionSeparator
+
 type SelectProps = {
   options: OptionType[],
   name?: string,
@@ -80,11 +86,16 @@ const Select: FC<SelectProps> = ({
 
   const selectOption = (selectedOption: OptionType) => {
     const isTagCreation = selectedOption.name == tagCreationPrompt(search)
+    let selectedOptionIndex: number
 
-    const option = {
-      name: isTagCreation ? search : selectedOption.name || '',
-      value: selectedOption.value || ''
+    if (isTagCreation) {
+      selectedOption.name = search
+      createdOptions.current.push(selectedOption)
+      const optionCount = createdOptions.current.length + options.length -1
+      selectedOptionIndex = optionCount -1
     }
+    else selectedOptionIndex = options.findIndex(
+      option => isOption(option) && option.value === selectedOption.value)
 
     const index = filteredOptions.findIndex(
       filteredOption => filteredOption.value === option.value)
@@ -92,12 +103,11 @@ const Select: FC<SelectProps> = ({
     if (isMultiple(selection))
       setSelection([ ...(selection || []), option ])
     else
-      setSelection(option)
+      setSelection(selectedOption)
 
     setSearch('')
     setExpanded(multiple)
-    setFocusedOptionIndex(index)
-    isTagCreation && createdOptions.current.push(option)
+    setFocusedOptionIndex(selectedOptionIndex)
   }
 
   const unselectOption = (e: MouseEvent, selectedOption: OptionType) => {
@@ -189,6 +199,9 @@ const Select: FC<SelectProps> = ({
 
   if (filteredOptions.length === 0 && tagCreation)
     filteredOptions.push({ name: tagCreationPrompt(search), value: search.toLowerCase().replace(/\s/g, '-') })
+
+  // Safe to cast, focused option index always points to an OptionType
+  const focusedOption = options[focusedOptionIndex] as OptionType
 
   return (
     <div
@@ -282,6 +295,7 @@ const Select: FC<SelectProps> = ({
               ? filteredOptions.reduce(
                 ([options, group]: [ReactNode[], string], option: OptionType, index: number): [ReactNode[], string] =>
                 {
+
                   const optionGroup = option.group || ''
 
                   if (optionGroup && optionGroup !== group) {

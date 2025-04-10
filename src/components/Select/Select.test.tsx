@@ -1,5 +1,5 @@
 import {fireEvent, render, screen, within} from '@testing-library/react'
-import Select from './Select.tsx'
+import Select, {OptionOrSeparator} from './Select.tsx'
 import { OptionType as Option } from './Option.tsx'
 import { userEvent, UserEvent } from '@testing-library/user-event'
 import { JSX } from 'react'
@@ -17,6 +17,15 @@ describe('Select', () => {
     { name: "Option 1", value: "option-1" },
     { name: "Option 2", value: "option-2" },
     { name: "Option 3", value: "option-3", group: 'Test group' },
+    { name: "Option 4", value: "option-4", group: 'Test group' }
+  ]
+
+  const separatedOptions: OptionOrSeparator[] = [
+    { name: "Option 1", value: "option-1" },
+    { name: "Option 2", value: "option-2" },
+    { separator: true },
+    { name: "Option 3", value: "option-3", group: 'Test group' },
+    { separator: <hr /> },
     { name: "Option 4", value: "option-4", group: 'Test group' }
   ]
 
