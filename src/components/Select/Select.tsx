@@ -4,7 +4,7 @@ import styles from './Select.module.css'
 import Option from './Option'
 import { OptionIndex, OptionOrGroup, OptionType } from './OptionTypes'
 import OptionList from "./OptionList.tsx"
-import { isCreateOptionPrompt, isGroup } from './OptionsUtil.tsx'
+import { isCreateOptionPrompt, isGroup, firstIndex } from './OptionsUtil.tsx'
 
 type SelectProps = {
   options: OptionOrGroup[]
@@ -39,10 +39,10 @@ const Select: FC<SelectProps> = ({
 
   const [ search, setSearch ] = useState('')
   const [ expanded, setExpanded ] = useState(isExpanded)
-  const [ focusedOptionIndex, setFocusedOptionIndex ] = useState<OptionIndex>(optionList.initialFocusedIndex())
+  const [ focusedOptionIndex, setFocusedOptionIndex ] = useState<OptionIndex>(firstIndex(options))
   const [ selection, setSelection ] = useState<OptionType | OptionType[] | null>(() =>
     initialValue
-      ? optionList.findOptionsWithValue(initialValue, options, multiple)
+      ? optionList.findOptionsWithValue(initialValue)
       : null
   )
 

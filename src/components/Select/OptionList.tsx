@@ -26,10 +26,6 @@ class OptionList {
     return options
   }
 
-  initialFocusedIndex(): OptionIndex {
-    return isGroup(this.options[0]) ? [0, 0] : 0
-  }
-
   findOptionIndex (findOption: OptionType): OptionIndex {
     for (let i = 0; i < this.options.length; i++) {
       const option = this.options[i]
@@ -54,39 +50,56 @@ class OptionList {
       const optionGroup = this.options[groupIndex] as OptionGroup
       const groupOptions = optionGroup.options
 
-      const nextGroupIndex = groupIndex + 1
+      const nextIndex = groupIndex + 1
       const nextOptionIndex = optionIndex + 1
-      const moveToNextGroup = nextOptionIndex === groupOptions.length
-      const isLastGroup = nextGroupIndex === this.options.length
+      const exitGroup = nextOptionIndex === groupOptions.length
+      const wasLastIndex = nextIndex === this.options.length
 
-      return moveToNextGroup
-        ? isLastGroup
-          ? [groupIndex, optionIndex]   // remain unchanged
-          : [nextGroupIndex, 0]         // move to first option in next group
-        : [groupIndex, nextOptionIndex] // move to next option in same group
+      if (wasLastIndex)
+        return [groupIndex, optionIndex]          // don't move, there is nothing ahead
+
+      else if (exitGroup)
+        return isGroup(this.options[nextIndex])
+          ? [nextIndex, 0]                        // move to first option in next group
+          : nextIndex                             // move to the next option
+
+      else return [groupIndex, nextOptionIndex]   // stay in group, move to next option
     }
 
-    return Math.min(index + 1, this.options.length - 1)
+    const nextIndex = Math.min(index + 1, this.options.length - 1)
+
+    return isGroup(this.options[nextIndex])
+      ? [nextIndex, 0]
+      : nextIndex
   }
 
   previousIndex(index: OptionIndex): OptionIndex {
     if (isGroupIndex(index)) {
       let [groupIndex, optionIndex] = index
 
-      const previousGroupIndex = groupIndex - 1
+      const previousIndex = groupIndex - 1
       const previousOptionIndex = optionIndex - 1
-      const moveToPreviousGroup = previousOptionIndex === -1
-      const isFirstGroup = previousGroupIndex === -1
-      const previousGroup = this.options[previousGroupIndex] as OptionGroup
+      const exitGroup = previousOptionIndex === -1
+      const wasFirstIndex = previousIndex === -1
+      const previousGroup = this.options[previousIndex] as OptionGroup
 
-      return moveToPreviousGroup
-        ? isFirstGroup
-          ? [groupIndex, optionIndex]                               // remain unchanged
-          : [previousGroupIndex, previousGroup.options.length -1]   // move to last option in previous group
-        : [groupIndex, previousOptionIndex]                         // move to previous option in same group
+      if (wasFirstIndex)
+        return [groupIndex, optionIndex]                         // don't move, there is nothing before
+
+      else if (exitGroup)
+        return isGroup(this.options[previousIndex])             // previous index is group
+          ? [previousIndex, previousGroup.options.length - 1]   // move to last option in previous group
+          : previousIndex                                       // move to the previous option
+
+      else return [groupIndex, previousOptionIndex]             // stay in group, move to previous option
     }
 
-    return Math.max(index - 1, 0)
+    const previousIndex = Math.max(index - 1, 0)
+    const previousGroup = this.options[previousIndex] as OptionGroup
+
+    return isGroup(this.options[previousIndex])
+      ? [previousIndex, previousGroup.options.length - 1]
+      : previousIndex
   }
 
   get(index: OptionIndex): OptionType {
@@ -100,35 +113,59 @@ class OptionList {
     return this.options[index] as OptionType
   }
 
-  filter(filter: string): OptionOrGroup[] {
-    return this.options.reduce((filteredOptions: OptionOrGroup[], option: OptionOrGroup) => {
+  filter(filter?: string | null): OptionOrGroup[] {
+    if (!filter)
+      return this.options
+
+    const filtered = this.options.reduce((filteredOptions: OptionOrGroup[], option: OptionOrGroup) => {
 
       if (isGroup(option)) {
-        const group = option
+
+        const group = { ...option }
+
         const filteredGroupOptions =
           group.options.filter(option => option.name.toLowerCase().includes(filter.toLowerCase()))
-        
+
         group.options = filteredGroupOptions.length > 0
           ? filteredGroupOptions
           : this.showCreateOptionPrompt
             ? [{ name: createOptionPrompt(filter), value: dasherize(filter), groupIndex: group.index }]
             : []
-          
-        filteredOptions.push(group)
+
+        group.options.length > 0 && filteredOptions.push(group)
       }
       else {
         const passesFilter = option.name.toLowerCase().includes(filter.toLowerCase())
         passesFilter && filteredOptions.push(option)
       }
-      
+
       return filteredOptions
     },
     [])
+
+    return filtered.length === 0 && this.showCreateOptionPrompt
+      ? [{ name: createOptionPrompt(filter), value: dasherize(filter) }]
+      : filtered
   }
 
-  findOptionsWithValue(value: string | string[], options: OptionOrGroup[], multiple: boolean): OptionType | OptionType[] {
+  createOption(name: string, groupIndex?: number): readonly [OptionType, OptionIndex] {
+    const option = { name, value: dasherize(name), groupIndex }
 
-    const found = options.reduce((found: OptionType[], option: OptionOrGroup): OptionType[] => {
+    if (groupIndex) {
+      const group = this.getGroup(groupIndex)
+      const optionIndex: OptionIndex = [groupIndex, group.options.length]
+
+      group.options.push(option)
+      return [option, optionIndex]
+    }
+    else {
+      this.options.push(option)
+      return [option, this.options.length - 1]
+    }
+  }
+
+  findOptionsWithValue(value: string | string[]): OptionType | OptionType[] {
+    const found = this.options.reduce((found: OptionType[], option: OptionOrGroup): OptionType[] => {
         if (isGroup(option)) {
           const foundInGroup = option.options.filter(option => this.optionHasValue(option, value)) || []
           return [...found, ...foundInGroup]
@@ -140,6 +177,7 @@ class OptionList {
       },
       [])
 
+    const multiple = Array.isArray(value)
     return multiple ? found : found[0]
   }
 
@@ -147,22 +185,6 @@ class OptionList {
     return Array.isArray(value)
       ? value.includes(option.value)
       : value === option.value
-  }
-  
-  createOption(name: string, groupIndex?: number): readonly [OptionType, OptionIndex] {
-    const option = { name, value: dasherize(name), groupIndex }
-    
-    if (groupIndex) {
-      const group = this.getGroup(groupIndex) 
-      const optionIndex: OptionIndex = [groupIndex, group.options.length - 1]
-      
-      group.options.push(option)
-      return [option, optionIndex]
-    }
-    else {
-      this.options.push(option)
-      return [option, this.options.length - 1]
-    }
   }
 }
 

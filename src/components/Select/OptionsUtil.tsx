@@ -5,3 +5,4 @@ export const isGroupIndex = (index: OptionIndex): index is readonly [number, num
 export const dasherize = (str: string): string => str.toLowerCase().replace(/\s/g, '-')
 export const createOptionPrompt = (optionName: string): string => `Create ${optionName}`
 export const isCreateOptionPrompt = (prompt: string, compare: string): boolean => prompt === createOptionPrompt(compare)
+export const firstIndex = (options: OptionOrGroup[]): OptionIndex => isGroup(options[0]) ? [0, 0] : 0
