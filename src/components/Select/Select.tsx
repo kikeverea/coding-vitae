@@ -1,10 +1,10 @@
-import { FC, MouseEvent, KeyboardEvent, useRef, useState, useEffect } from 'react'
+import {FC, MouseEvent, KeyboardEvent, useRef, useState, useLayoutEffect} from 'react'
 import Chip from '../Chip/Chip.tsx'
 import styles from './Select.module.css'
 import Option from './Option'
 import { OptionIndex, OptionOrGroup, OptionType } from './OptionTypes'
 import OptionList from "./OptionList.tsx"
-import { isCreateOptionPrompt, isGroup, firstIndex } from './OptionsUtil.tsx'
+import { isCreateOptionPrompt, isGroup } from './OptionsUtil.tsx'
 
 type SelectProps = {
   options: OptionOrGroup[]
@@ -29,29 +29,35 @@ const Select: FC<SelectProps> = ({
   placeholder='',
   expanded: isExpanded=false,
   tagCreation,
+  onOptionCreated,
   multiple=false,
   noDataMessage='No data available'
 }) => {
 
+  // TODO check if incoming options are different than ref options
   const optionListRef = useRef(new OptionList(options, !!tagCreation))
   const inputRef = useRef<HTMLInputElement>(null)
   const optionList = optionListRef.current
 
   const [ search, setSearch ] = useState('')
   const [ expanded, setExpanded ] = useState(isExpanded)
-  const [ focusedOptionIndex, setFocusedOptionIndex ] = useState<OptionIndex>(firstIndex(options))
+  const [ navigationIndex, setNavigationIndex ] = useState<OptionIndex | null>(expanded ? optionList.firstIndex() : null)
   const [ selection, setSelection ] = useState<OptionType | OptionType[] | null>(() =>
     initialValue
       ? optionList.findOptionsWithValue(initialValue)
       : null
   )
 
-  useEffect(() => {
-    setIgnoreBlurEvent()
-    inputRef.current?.focus()
+  useLayoutEffect(() => {
+    if (expanded) {
+      setIgnoreBlurEvent()
+      inputRef.current?.focus()
+    }
   }, [expanded])
 
   const isMultiple = (_selection: any): _selection is OptionType[] => multiple
+  const focusedOptionIndex = navigationIndex || optionList.firstIndex()
+
   let ignoreBlurEvent = false
 
   // Optimize querying for selected options. Prevent O(nm) on large option sets
@@ -77,12 +83,13 @@ const Select: FC<SelectProps> = ({
 
   const handleOptionHover =  (_e: MouseEvent, option: OptionType): void=> {
     const hoveredOptionIndex = optionList.findOptionIndex(option)
-    setFocusedOptionIndex(hoveredOptionIndex)
+    setNavigationIndex(hoveredOptionIndex)
   }
 
   const createOption = (option: OptionType): void => {
-    const [created, index] = optionList.createOption(option.name, option.groupIndex)
+    const [created, index, group] = optionList.createOption(search, option.groupIndex)
     selectOption(created, index)
+    onOptionCreated && onOptionCreated(created, group?.group)
   }
 
   const selectOption = (option: OptionType, index?: OptionIndex): void => {
@@ -94,7 +101,7 @@ const Select: FC<SelectProps> = ({
 
     setSearch('')
     setExpanded(multiple)
-    setFocusedOptionIndex(index || optionList.findOptionIndex(option))
+    setNavigationIndex(index || optionList.findOptionIndex(option))
   }
 
   const unselectOption = (e: MouseEvent, selectedOption: OptionType) => {
@@ -117,15 +124,15 @@ const Select: FC<SelectProps> = ({
     switch (e.key) {
       case 'ArrowDown':
         // Move focus down (next option)
-        setFocusedOptionIndex((currentIndex) => optionList.nextIndex(currentIndex))
+        setNavigationIndex((currentIndex) => optionList.nextIndex(currentIndex))
         break
       case 'ArrowUp':
         // Move focus up (previous option)
-        setFocusedOptionIndex((currentIndex) => optionList.previousIndex(currentIndex))
+        setNavigationIndex((currentIndex) => optionList.previousIndex(currentIndex))
         break
       case 'Enter':
-        selectOption(optionList.get(focusedOptionIndex))
-        setExpanded(false)  // Close the dropdown after selection
+        // Select focused option, if any
+        focusedOptionIndex && selectOption(optionList.get(focusedOptionIndex))
         break
       case 'Escape':
         setSearch('')
@@ -139,7 +146,7 @@ const Select: FC<SelectProps> = ({
   const filterOptions = (e: MouseEvent<HTMLInputElement> ) => {
     const input = e.currentTarget
     setSearch(input.value)
-    setFocusedOptionIndex(0)
+    setNavigationIndex(0)
   }
 
   const toggleDropdown = (e: MouseEvent) => {
@@ -187,7 +194,7 @@ const Select: FC<SelectProps> = ({
       aria-haspopup='listbox'
       aria-owns="select__dropdown-list"
       aria-controls="select__dropdown-list"
-      aria-activedescendant={ options.length > 0 ? `select__option-${optionList.get(focusedOptionIndex).value}` : '' }
+      aria-activedescendant={ focusedOptionIndex !== null ? `select__option-${optionList.get(focusedOptionIndex).value}` : '' }
       aria-expanded={ expanded }
       onClick={ toggleDropdown }
       onMouseDown={ setIgnoreBlurEvent }
@@ -277,6 +284,17 @@ const Select: FC<SelectProps> = ({
                         aria-label={ optionOrGroup.group }
                       >
                         { optionOrGroup.group }
+                        { optionOrGroup.options.map(option =>
+                          <Option
+                            key={ option.value }
+                            option={ option }
+                            selected={ selectionSet.has(option.value) }
+                            focused={ focusedOptionIndex === index }
+                            onPressed={ setIgnoreBlurEvent }
+                            onClicked={ e => handleOptionClicked(e, option) }
+                            onHover={ e => handleOptionHover(e, option) }
+                          />)
+                        }
                       </div>
                     : <Option
                         key={ optionOrGroup.value }

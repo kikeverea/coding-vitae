@@ -1,29 +1,40 @@
 import { OptionGroup, OptionIndex, OptionOrGroup, OptionType } from './OptionTypes'
-import { isGroup, isGroupIndex, dasherize, createOptionPrompt } from './OptionsUtil'
+import {isGroup, isGroupIndex, dasherize, createOptionPrompt, firstIndex} from './OptionsUtil'
 
 class OptionList {
   private readonly options: OptionOrGroup[]
   private readonly showCreateOptionPrompt
 
-  constructor(options: OptionOrGroup[], showCreateOptionPrompt: boolean) {
+  constructor(options: OptionOrGroup[], showCreateOptionPrompt?: boolean) {
     this.options = this.initOptions(options)
-    this.showCreateOptionPrompt = showCreateOptionPrompt
+    this.showCreateOptionPrompt = !!showCreateOptionPrompt
   }
 
   private getGroup = (groupIndex: number): OptionGroup => this.options[groupIndex] as OptionGroup
   
   private initOptions(options: OptionOrGroup[]): OptionOrGroup[] {
-    for (let i = 0; i < options.length; i++) {
-      const group = options[i]
+    return options.map((optionOrGroup, index) => {
 
-      if (!isGroup(group))
-        continue
+      optionOrGroup = { ...optionOrGroup }
 
-      group.index = i
-      group.options.forEach(option => option.groupIndex = i)
-    }
+      if (isGroup(optionOrGroup)) {
+        const group = optionOrGroup
+        group.index = index
+        group.options.forEach(option => option.groupIndex = index)
+      }
 
-    return options
+      return optionOrGroup
+    })
+  }
+
+  empty(): boolean {
+    return this.options.length === 0
+  }
+
+  firstIndex(): number | readonly [number, number] | null {
+    return this.empty()
+      ? null
+      : isGroup(this.options[0]) ? [0, 0] : 0
   }
 
   findOptionIndex (findOption: OptionType): OptionIndex {
@@ -44,7 +55,10 @@ class OptionList {
     return this.options.length -1
   }
 
-  nextIndex(index: OptionIndex): OptionIndex {
+  nextIndex(index: OptionIndex | null): OptionIndex {
+    if (index === null)
+      return firstIndex(this.options)
+
     if (isGroupIndex(index)) {
       let [groupIndex, optionIndex] = index
       const optionGroup = this.options[groupIndex] as OptionGroup
@@ -73,7 +87,10 @@ class OptionList {
       : nextIndex
   }
 
-  previousIndex(index: OptionIndex): OptionIndex {
+  previousIndex(index: OptionIndex | null): OptionIndex {
+    if (index === null)
+      return firstIndex(this.options)
+
     if (isGroupIndex(index)) {
       let [groupIndex, optionIndex] = index
 
@@ -148,7 +165,7 @@ class OptionList {
       : filtered
   }
 
-  createOption(name: string, groupIndex?: number): readonly [OptionType, OptionIndex] {
+  createOption(name: string, groupIndex?: number): readonly [OptionType, OptionIndex, OptionGroup?] {
     const option = { name, value: dasherize(name), groupIndex }
 
     if (groupIndex) {
@@ -156,7 +173,7 @@ class OptionList {
       const optionIndex: OptionIndex = [groupIndex, group.options.length]
 
       group.options.push(option)
-      return [option, optionIndex]
+      return [option, optionIndex, group]
     }
     else {
       this.options.push(option)

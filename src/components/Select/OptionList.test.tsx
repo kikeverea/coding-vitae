@@ -14,24 +14,28 @@ describe('Option List', () => {
   const groupsIndex = [2, 4, 5]
 
   beforeEach(() => {
+    // index and groupIndex included for testing purposes
+    // not necessary to include when using this component, they will be managed
+    // internally by OptionList
+
     options = [
       { name: "Option 1", value: "option-1" },
       { name: "Option 2", value: "option-2" },
-      { group: "Group 1", options: [
-          { name: "Option 3", value: "option-3" },
-          { name: "Option 4", value: "option-4" },
-          { name: "Option 5", value: "option-5" },
+      { group: "Group 1", index: 2, options: [
+          { name: "Option 3", value: "option-3", groupIndex: 2 },
+          { name: "Option 4", value: "option-4", groupIndex: 2 },
+          { name: "Option 5", value: "option-5", groupIndex: 2 },
         ]
       },
       { name: "Option 6", value: "option-6" },
-      { group: "Group 2", options: [
-          { name: "Option 7", value: "option-7" },
-          { name: "Option 8", value: "option-8" },
-          { name: "Option 9", value: "option-9" },
+      { group: "Group 2", index: 4, options: [
+          { name: "Option 7", value: "option-7", groupIndex: 4 },
+          { name: "Option 8", value: "option-8", groupIndex: 4 },
+          { name: "Option 9", value: "option-9", groupIndex: 4 },
         ]
       },
-      { group: "Group 3", options: [
-          { name: "Option last", value: "option-last" }
+      { group: "Group 3", index: 5, options: [
+          { name: "Option last", value: "option-last", groupIndex: 5 }
         ]
       }
     ]
@@ -47,12 +51,23 @@ describe('Option List', () => {
     optionListCreationEnabled = new OptionList(options, true)
   })
 
+  test('inner state and options passed to the constructor are not the same instance', () => {
+    expect((optionList as any).options).not.toBe(options)
+  })
+
   test('options are initialized with their group index', () => {
+    const options = (optionList as any).options
+
     const group1 = options[2] as OptionGroup
     const group2 = options[4] as OptionGroup
 
     group1.options.forEach(option => option.groupIndex === 2)
     group2.options.forEach(option => option.groupIndex === 4)
+  })
+
+  test('"empty" returns true if list has no options', () => {
+    const empty = new OptionList([], false).empty()
+    expect(empty).toBe(true)
   })
 
   describe('Find index', () => {
@@ -97,7 +112,24 @@ describe('Option List', () => {
     })
   })
 
-  describe('Next Index', () => {
+  describe('First Index', () => {
+    test('returns the first option index', () => {
+      expect(optionList.firstIndex()).toEqual(0)
+    })
+
+    test('returns the first option group index', () => {
+      const groupFirstOptions = options.filter((_a, index) => index > 1)
+      const testOptionList = new OptionList(groupFirstOptions)
+
+      expect(testOptionList.firstIndex()).toEqual([0, 0])
+    })
+  })
+
+  describe('Previous Index', () => {
+    test('returns the first option index if index is null', () => {
+      expect(optionList.previousIndex(null)).toBe(0)
+    })
+
     test('returns the previous option index', () => {
       expect(optionList.previousIndex(1)).toBe(0)
     })
@@ -123,7 +155,11 @@ describe('Option List', () => {
     })
   })
 
-  describe('Previous Index', () => {
+  describe('Next Index', () => {
+    test('returns the first option index if index is null', () => {
+      expect(optionList.nextIndex(null)).toBe(0)
+    })
+
     test('returns the next option index', () => {
       expect(optionList.nextIndex(0)).toBe(1)
     })
@@ -196,19 +232,23 @@ describe('Option List', () => {
   describe('With option creation', () => {
 
     test('creates an option and returns it along with its index', () => {
-      const [createdOption, createdIndex] = optionList.createOption('Create Option')
+      const [createdOption, createdIndex, group] = optionList.createOption('Create Option')
+
+      const options = (optionList as any).options
 
       expect(options[options.length - 1]).toEqual(createdOption)
       expect(options.length - 1).toEqual(createdIndex)
+      expect(group).not.toBeDefined()
     })
 
-    test('creates an option in a group and returns it along with its index', () => {
+    test('creates an option in a group and returns it along with its index and group', () => {
       const groupIndex = 2
       const group = options[2] as OptionGroup
-      const [createdOption, createdIndex] = optionList.createOption('Create Option', groupIndex)
+      const [createdOption, createdIndex, inGroup] = optionList.createOption('Create Option', groupIndex)
 
       expect(group.options[group.options.length - 1]).toEqual(createdOption)
       expect([groupIndex, group.options.length - 1]).toEqual(createdIndex)
+      expect(inGroup).toEqual(group)
     })
   })
 

@@ -1,14 +1,22 @@
 import {fireEvent, render, screen, within} from '@testing-library/react'
 import Select from './Select'
-import { OptionOrGroup } from './OptionTypes'
+import {OptionGroup, OptionOrGroup, OptionType} from './OptionTypes'
 import { userEvent, UserEvent } from '@testing-library/user-event'
 import { JSX } from 'react'
 import {Mock, vi} from 'vitest'
 
+type OptionIndexSet = 0 | 1 | 3
+type GroupIndexSet = 2 | 4 | 5
 
 describe('Select', () => {
 
-  const options: OptionOrGroup[] = [
+  const options: OptionType[] = [
+    { name: "Option 1", value: "option-1" },
+    { name: "Option 2", value: "option-2" },
+    { name: "Option 3", value: "option-3" }
+  ]
+
+  const separatedOptions: OptionOrGroup[] = [
     { name: "Option 1", value: "option-1" },
     { name: "Option 2", value: "option-2" },
     { name: "Option 3", value: "option-3" }
@@ -17,23 +25,69 @@ describe('Select', () => {
   const groupedOptions: OptionOrGroup[] = [
     { name: "Option 1", value: "option-1" },
     { name: "Option 2", value: "option-2" },
-    { name: "Option 3", value: "option-3" },
-    { name: "Option 4", value: "option-4" }
+    { group: "Group 1", options: [
+        { name: "Option 3", value: "option-3" },
+        { name: "Option 4", value: "option-4" },
+        { name: "Option 5", value: "option-5" },
+      ]
+    },
+    { name: "Option 6", value: "option-6" },
+    { group: "Group 2", options: [
+        { name: "Option 7", value: "option-7" },
+        { name: "Option 8", value: "option-8" },
+        { name: "Option 9", value: "option-9" },
+      ]
+    },
+    { group: "Group 3", options: [
+        { name: "Option last", value: "option-last" }
+      ]
+    }
   ]
 
-  let selectElement: HTMLElement
   let user: UserEvent
+  let selectElement: HTMLElement
+  let searchbox: HTMLInputElement
   let listbox: HTMLElement
   let optionElements: HTMLOptionElement[]
 
-  const getOption = (index: number, fromOptions?: Option[] | undefined, fromElements?: HTMLElement[] | undefined): [Option, HTMLElement] => {
-    const useOptions = fromOptions || options
-    const useElements = fromElements || optionElements
-
-    return [useOptions[index], useElements[index]]
+  const getOption = (
+    index: number,
+    fromOptions: OptionType[] = options,
+    fromElements: HTMLOptionElement[] = optionElements): [OptionType, HTMLOptionElement] =>
+  {
+    return [fromOptions[index], fromElements[index]]
   }
 
-  const randomIndex = (): number => Math.floor(Math.random() * options.length)
+  const getGroupedOption = (
+    index: OptionIndexSet | [GroupIndexSet, 0 | 1 | 2],
+    fromOptions: OptionOrGroup[] = groupedOptions,
+    fromElements: HTMLOptionElement[] = optionElements): [OptionType, HTMLElement] =>
+  {
+    if (Array.isArray(index)) {
+      const [groupIndex, optionIndex] = index
+      const [group, groupElement] = getGroup(groupIndex, fromOptions, fromElements)
+      return [group.options[optionIndex], groupElement.children[optionIndex] as HTMLElement]
+    }
+    else return [fromOptions[index] as OptionType, fromElements[index] as HTMLElement]
+  }
+
+  const getGroup = (
+    index: 2 | 4 | 5,
+    fromOptions: OptionOrGroup[] = groupedOptions,
+    fromElements: HTMLElement[] = optionElements): [OptionGroup, HTMLElement] =>
+  {
+
+    return [fromOptions[index] as OptionGroup, fromElements[index]]
+  }
+
+  const randomIndex = () => Math.floor(Math.random() * options.length)
+
+  const randomGroupedOptionIndex = (): 0 | 1 | 3 => {
+    const optionIndices: [0, 1, 3] = [0, 1, 3]
+    return optionIndices[Math.floor(Math.random() * optionIndices.length)]
+  }
+
+  // TODO make some code for Ruby/Rails methods like this one
   const dasherize = (str: string): string => str.toLowerCase().replace(/\s/g, '-')
 
   beforeEach(() => {
@@ -108,9 +162,8 @@ describe('Select', () => {
       const optionElements: HTMLOptionElement[] = screen.getAllByRole('option')
       expect(optionElements.length).toBe(3)
 
-      optionElements.forEach((option, index) => {
-        expect(option.textContent).toBe(`${options[index].name}`)
-      })
+      optionElements.forEach((optionElement, index) =>
+        expect(optionElement.textContent).toBe(`Option ${index + 1}`))
     })
 
     test('renders searchbox', () => {
@@ -169,7 +222,7 @@ describe('Select', () => {
       await user.click(selectElement)
 
       // Click on the already selected option
-      const optionElementsNow = screen.getAllByRole('option')
+      const optionElementsNow: HTMLOptionElement[] = screen.getAllByRole('option')
       const [_selectedOption, selectedOptionElement] = getOption(index, options, optionElementsNow)
       await user.click(selectedOptionElement)
 
@@ -315,7 +368,7 @@ describe('Select', () => {
     })
   })
 
-  describe('With expanded dropdown and tag creation enabled', () => {
+  describe('With expanded dropdown and tag creation enabled, no groups', () => {
 
     let onOptionCreated: Mock
 
@@ -323,11 +376,11 @@ describe('Select', () => {
       onOptionCreated = vi.fn()
       render(<Select options={ options } expanded={ true } tagCreation={ true } onOptionCreated={ onOptionCreated } />)
       selectElement = screen.getByRole('combobox')
+      searchbox = screen.getByRole('searchbox')
     })
 
     test('searching for a non existing option displays "Create xxx"', async () => {
       const optionName = `Does not exist ${options[randomIndex()].name}`
-      const searchbox = screen.getByRole('searchbox')
 
       await user.type(searchbox, optionName)
       const optionElements = screen.getAllByRole('option')
@@ -340,8 +393,6 @@ describe('Select', () => {
       let optionElements: HTMLOptionElement[]
 
       const optionName = `Does not exist ${options[randomIndex()].name}`
-      const searchbox = screen.getByRole('searchbox')
-      const combobox = screen.getByRole('combobox')
 
       // Filter options
       await user.type(searchbox, optionName)
@@ -355,7 +406,7 @@ describe('Select', () => {
       expect(selectedOption.textContent).toBe(optionName)
 
       // Expand the dropdown again, to be able to access the options
-      await user.click(combobox)
+      await user.click(selectElement)
       optionElements = screen.getAllByRole('option')
 
       const tagCreatedOption = optionElements.find(option =>
@@ -364,9 +415,8 @@ describe('Select', () => {
       expect(tagCreatedOption).not.toBeNull()
     })
 
-    test('creating an option calls onOptionCreated if present', () => {
+    test('creating an option calls onOptionCreated if present', async () => {
       const optionName = `Does not exist ${options[randomIndex()].name}`
-      const searchbox = screen.getByRole('searchbox')
 
       // Filter options
       await user.type(searchbox, optionName)
@@ -377,26 +427,6 @@ describe('Select', () => {
       await user.click(tagCreationElement)
 
       expect(onOptionCreated).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('With option groups', () => {
-    beforeEach(async () => {
-      render(<Select options={ groupedOptions } placeholder={ 'Test placeholder' } expanded={ true }/>)
-      selectElement = screen.getByRole('combobox')
-      optionElements = screen.getAllByRole('option')
-    })
-
-    test('renders all options and their groups', () => {
-      const optionElements: HTMLOptionElement[] = screen.getAllByRole('option')
-      const optionGroupLabels: HTMLOptionElement[] = screen.getAllByLabelText('Test group')
-
-      expect(optionElements.length).toBe(4)
-      expect(optionGroupLabels.length).toBe(1)
-
-      optionElements.forEach((option, index) => {
-        expect(option.textContent).toBe(`${groupedOptions[index].name}`)
-      })
     })
   })
 
@@ -425,7 +455,49 @@ describe('Select', () => {
       expect(selectedOptionValue.value).toBe(JSON.stringify(['option-1', 'option-3']))
     })
   })
-  
+
+  describe('With option groups', () => {
+    beforeEach(async () => {
+      render(<Select options={ groupedOptions } placeholder={ 'Test placeholder' } expanded={ true } tagCreation={ true }/>)
+      selectElement = screen.getByRole('combobox')
+      optionElements = screen.getAllByRole('option')
+      searchbox = screen.getByRole('searchbox')
+    })
+
+    test('renders all options and their groups', () => {
+      const optionElements: HTMLOptionElement[] = screen.getAllByRole('option')
+      const groupElements: HTMLDivElement[] = [1, 2, 3].map(groupIndex => screen.getByLabelText(`Group ${groupIndex}`))
+
+      expect(optionElements.length).toBe(10)
+      expect(groupElements.length).toBe(3)
+
+      optionElements.forEach((optionElement, index) =>
+        expect(optionElement.textContent)
+          .toBe(`Option ${index === optionElements.length - 1 ? 'last' : index + 1}`))
+    })
+
+    test('searching for a non existing option displays "Create xxx" in every group', async () => {
+      const optionName = 'Does not exist'
+
+      await user.type(searchbox, optionName)
+      const optionElements = screen.getAllByRole('option')
+
+      expect(optionElements).toHaveLength(3)
+      optionElements.forEach(optionElement => expect(optionElement.textContent).toBe(`Create ${optionName}`))
+    })
+  })
+
+  describe('With option separator', () => {
+    beforeEach(async () => {
+      render(<Select options={ options } expanded={ true } />)
+      selectElement = screen.getByRole('combobox')
+      optionElements = screen.getAllByRole('option')
+      searchbox = screen.getByRole('searchbox')
+    })
+
+    // TODO continue here..
+  })
+
   describe('Multiple select', () => {
 
     describe('With collapsed dropdown', () => {
@@ -452,6 +524,11 @@ describe('Select', () => {
         render(<Select options={ options } placeholder='Test placeholder' multiple={ true } expanded={ true } />)
         selectElement = screen.getByRole('combobox')
         optionElements = screen.queryAllByRole('option')
+        listbox = screen.getByRole('listbox')
+      })
+
+      test('listbox element aria multiselect is true', () => {
+        expect(listbox.ariaMultiSelectable).toBe('true')
       })
 
       test('with selected options, the clear selection button is rendered', async () => {
@@ -517,8 +594,8 @@ describe('Select', () => {
       })
 
       test('removing all options shows the placeholder', async () => {
-        const [_option1, optionElement1] = getOption(0)
-        const [_option2, optionElement2] = getOption(1)
+        const [_option1, optionElement1] = getGroupedOption(0)
+        const [_option2, optionElement2] = getGroupedOption(1)
 
         await user.click(optionElement1)
         await user.click(optionElement2)
@@ -538,7 +615,7 @@ describe('Select', () => {
         render(<Input />)
 
         // Select option
-        const [_option, optionElement] = getOption(0)
+        const [_option, optionElement] = getGroupedOption(0)
         await user.click(optionElement)
 
         // Remove select focus (collapse the dropdown)
@@ -554,7 +631,7 @@ describe('Select', () => {
       })
 
       test('given a expanded dropdown, removing an option does not collapse the dropdown', async () => {
-        const [_option, optionElement] = getOption(0)
+        const [_option, optionElement] = getGroupedOption(0)
         await user.click(optionElement)
 
         // Remove option
@@ -730,17 +807,6 @@ describe('Select', () => {
         expect(listbox.role).toBe('listbox')
         expect(listbox.ariaLive).toBe('polite')
         expect(listbox.ariaMultiSelectable).toBe('false')
-      })
-    })
-
-    describe('With multiple select', () => {
-      beforeEach(async () => {
-        render(<Select options={ options } placeholder='Test placeholder' multiple={ true } expanded={ true } />)
-        listbox = screen.getByRole('listbox')
-      })
-
-      test('listbox element aria multiselect is true', () => {
-        expect(listbox.ariaMultiSelectable).toBe('true')
       })
     })
   })
