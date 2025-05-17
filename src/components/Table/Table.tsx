@@ -2,6 +2,10 @@ import { isValidElement, ReactNode, useMemo } from 'react'
 
 export type Entity = { id: number | string }
 
+type TableFilter = {
+  [column: string]: string
+}
+
 export type TableColumns<T extends Entity> = {
   name: string,
   data: (item: T) => ReactNode
@@ -10,13 +14,17 @@ export type TableColumns<T extends Entity> = {
 type TableProps<T extends Entity> = {
   data: T[] | null | undefined
   columns: TableColumns<T>,
-  search?: string
+  search?: string,
+  filter?: TableFilter,
+  noEntriesMessage?: string
 }
 
 type RowProps<T extends Entity> = {
   data: T[]
   columns: TableColumns<T>,
-  search: string
+  search?: string,
+  filter?: TableFilter,
+  noEntriesMessage?: string
 }
 
 type ColumnProps<T extends Entity> = {
@@ -25,7 +33,14 @@ type ColumnProps<T extends Entity> = {
   name: string
 }
 
-const Table = <T extends Entity>({ data, columns, search }: TableProps<T>) => {
+const Table = <T extends Entity>(
+  {
+  data,
+  columns,
+  search,
+  filter,
+  noEntriesMessage
+}: TableProps<T>) => {
 
   const header = useMemo(() => columns.map(col => col.name), [columns])
 
@@ -38,16 +53,14 @@ const Table = <T extends Entity>({ data, columns, search }: TableProps<T>) => {
       </thead>
       <tbody>
         { data && data.length
-          ? search
-            ? renderRowsWithSearch({ data, columns, search })
+          ? search || filter
+            ? renderRowsWithSearch({ data, columns, search, filter, noEntriesMessage })
             : data.map(item =>
               <tr key={ item.id }>
                 { columns.map(column => <td key={ `${item.id}-${column.name}` }>{ column.data(item) }</td>) }
               </tr>
             )
-          : <tr>
-              <td>{ 'No data available' }</td>
-            </tr>
+          : renderNoEntriesRow(noEntriesMessage)
         }
       </tbody>
     </table>
@@ -68,26 +81,36 @@ export const extractValue = (node: ReactNode): string => {
   return ''
 }
 
-const renderRowsWithSearch = <T extends Entity>({ data, columns, search }: RowProps<T>): ReactNode[] => {
+const renderRowsWithSearch = <T extends Entity>({ data , columns, search='', filter, noEntriesMessage }: RowProps<T>): ReactNode[] => {
 
   const rows: ReactNode[] = []
 
   for (const item of data) {
 
-    let passesFilter = false
+    let passesFilter = true
+    let passesSearch = false
+
     const rowColumns = []
 
     for (const column of columns) {
       const cellContent = column.data(item)
-      const value = extractValue(cellContent)
+      const value = extractValue(cellContent)?.toLowerCase()
 
-      passesFilter = passesFilter || value.toLowerCase().includes(search.toLowerCase())
+      const filterValue = filter && filter[column.name]
+
+      passesFilter = passesFilter && (!filterValue || value.includes(filterValue.toLowerCase()))
+      passesSearch = passesFilter && (passesSearch || !search || value.includes(search.toLowerCase()))
+
       rowColumns.push(renderColumn({ name: column.name, item, data: column.data }))
     }
 
-    passesFilter && rows.push(renderRow({ item, columns: rowColumns }))
+    if (passesFilter && passesSearch)
+      rows.push(renderRow({ item, columns: rowColumns }))
   }
-  return rows
+
+  return rows.length
+    ? rows
+    : [renderNoEntriesRow(noEntriesMessage)]
 }
 
 const renderColumn = <T extends Entity>({ name, item, data }: ColumnProps<T>) => {
@@ -96,6 +119,14 @@ const renderColumn = <T extends Entity>({ name, item, data }: ColumnProps<T>) =>
 
 const renderRow = <T extends Entity>({ item, columns }: { item: T, columns: ReactNode[] }) => {
   return <tr key={ item.id }>{ columns }</tr>
+}
+
+const renderNoEntriesRow = (message?: string) => {
+  return (
+    <tr key='empty-message'>
+      <td>{ message || 'No data available' }</td>
+    </tr>
+  )
 }
 
 export default Table
