@@ -12,7 +12,7 @@ export type TableColumns<T extends Entity> = {
 }[]
 
 type TableProps<T extends Entity> = {
-  data: T[] | null | undefined
+  collection: T[] | null | undefined
   columns: TableColumns<T>,
   search?: string,
   filter?: TableFilter,
@@ -20,7 +20,7 @@ type TableProps<T extends Entity> = {
 }
 
 type RowProps<T extends Entity> = {
-  data: T[]
+  collection: T[]
   columns: TableColumns<T>,
   search?: string,
   filter?: TableFilter,
@@ -35,7 +35,7 @@ type ColumnProps<T extends Entity> = {
 
 const Table = <T extends Entity>(
   {
-  data,
+  collection,
   columns,
   search,
   filter,
@@ -52,10 +52,10 @@ const Table = <T extends Entity>(
         </tr>
       </thead>
       <tbody>
-        { data && data.length
+        { collection && collection.length
           ? search || filter
-            ? renderRowsWithSearch({ data, columns, search, filter, noEntriesMessage })
-            : data.map(item =>
+            ? renderFilteredRows({ collection, columns, search, filter, noEntriesMessage })
+            : collection.map(item =>
               <tr key={ item.id }>
                 { columns.map(column => <td key={ `${item.id}-${column.name}` }>{ column.data(item) }</td>) }
               </tr>
@@ -81,11 +81,11 @@ export const extractValue = (node: ReactNode): string => {
   return ''
 }
 
-const renderRowsWithSearch = <T extends Entity>({ data , columns, search='', filter, noEntriesMessage }: RowProps<T>): ReactNode[] => {
+const renderFilteredRows = <T extends Entity>({ collection , columns, search='', filter, noEntriesMessage }: RowProps<T>): ReactNode[] => {
 
   const rows: ReactNode[] = []
 
-  for (const item of data) {
+  for (const item of collection) {
 
     let passesFilter = true
     let passesSearch = false
@@ -119,22 +119,21 @@ const evaluateFilter = (filter: string | { min?: number | string, max?: number |
   const isRange = typeof filter !== 'string'
 
   if (isRange) {
-    let { min, max, parser } = filter
 
-    if (needsParsing(min) && parser)
-      min = parser(min)
+    const { min, max, parser = (value: string) => parseInt(value) } = filter
 
-    if (needsParsing(max) && parser)
-      max = parser(max)
+    const minNumber = needsParsing(min) ? parser(min) : min
+    const maxNumber = needsParsing(max) ? parser(max) : max
+    const valueNumber = parser(value)
 
-    if (min !== undefined && max !== undefined)
-      return value >= min && value <= max
+    if (minNumber !== undefined && maxNumber !== undefined)
+      return valueNumber >= minNumber && valueNumber <= maxNumber
 
-    else if (min !== undefined)
-      return value >= min
+    else if (minNumber !== undefined)
+      return valueNumber >= minNumber
 
-    else if (max !== undefined)
-      return value <= max
+    else if (maxNumber !== undefined)
+      return valueNumber <= maxNumber
 
     else return true
   }
