@@ -3,7 +3,7 @@ import { isValidElement, ReactNode, useMemo } from 'react'
 export type Entity = { id: number | string }
 
 type TableFilter = {
-  [column: string]: string
+  [column: string]: string | { min?: number | string, max?: number | string, parser?: (value: string) => number }
 }
 
 export type TableColumns<T extends Entity> = {
@@ -95,10 +95,9 @@ const renderRowsWithSearch = <T extends Entity>({ data , columns, search='', fil
     for (const column of columns) {
       const cellContent = column.data(item)
       const value = extractValue(cellContent)?.toLowerCase()
-
       const filterValue = filter && filter[column.name]
 
-      passesFilter = passesFilter && (!filterValue || value.includes(filterValue.toLowerCase()))
+      passesFilter = passesFilter && (!filterValue || evaluateFilter(filterValue, value))
       passesSearch = passesFilter && (passesSearch || !search || value.includes(search.toLowerCase()))
 
       rowColumns.push(renderColumn({ name: column.name, item, data: column.data }))
@@ -111,6 +110,36 @@ const renderRowsWithSearch = <T extends Entity>({ data , columns, search='', fil
   return rows.length
     ? rows
     : [renderNoEntriesRow(noEntriesMessage)]
+}
+
+const needsParsing = (value: unknown): value is string => typeof value === 'string'
+
+const evaluateFilter = (filter: string | { min?: number | string, max?: number | string, parser?: (value: any) => number }, value: string): boolean => {
+
+  const isRange = typeof filter !== 'string'
+
+  if (isRange) {
+    let { min, max, parser } = filter
+
+    if (needsParsing(min) && parser)
+      min = parser(min)
+
+    if (needsParsing(max) && parser)
+      max = parser(max)
+
+    if (min !== undefined && max !== undefined)
+      return value >= min && value <= max
+
+    else if (min !== undefined)
+      return value >= min
+
+    else if (max !== undefined)
+      return value <= max
+
+    else return true
+  }
+  else
+    return value.includes(filter.toLowerCase())
 }
 
 const renderColumn = <T extends Entity>({ name, item, data }: ColumnProps<T>) => {
