@@ -1,5 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
-import Table, { TableColumns } from './Table.tsx'
+import Table, { TableColumn } from './Table.tsx'
 import { parse } from 'date-fns'
 
 type TestData = {
@@ -13,7 +13,7 @@ type TestData = {
 
 describe('Table', () => {
 
-  const columns: TableColumns<TestData> = [
+  const columns: TableColumn<TestData>[] = [
     { name: 'Name', data: item => `${item.name}`},
     { name: 'Family', data: item => `${item.family}`},
     { name: 'Type', data: item => `${item.type}`},
