@@ -16,6 +16,7 @@ type TableProps<T extends Entity> = {
   columns: TableColumn<T>[],
   search?: string,
   filter?: TableFilter,
+  sort?: readonly [string, ('asc' | 'desc')?],
   noEntriesMessage?: string
 }
 
@@ -26,13 +27,16 @@ const Table = <T extends Entity>(
   columns,
   search,
   filter,
+  sort,
   noEntriesMessage
 }: TableProps<T>) => {
 
   const header = useMemo(() => columns.map(col => col.name), [columns])
 
   const rows = collection?.length
-    ? collection.filter(item => applySearchAndFilter(item, columns, search, filter))
+    ? collection
+      .filter(item => applySearchAndFilter(item, columns, search, filter))
+      .sort((item1, item2) => applySort(item1, item2, columns, sort))
     : null
 
   return (
@@ -62,7 +66,7 @@ const Table = <T extends Entity>(
   )
 }
 
-export const extractValue = (node: ReactNode): string => {
+const extractValue = (node: ReactNode): string => {
   if (typeof node === 'string' || typeof node === 'number')
     return String(node)
 
@@ -76,12 +80,15 @@ export const extractValue = (node: ReactNode): string => {
   return ''
 }
 
-function applySearchAndFilter<T extends Entity>(
+const applySearchAndFilter = <T extends Entity>(
   item: T,
   columns: TableColumn<T>[],
   search?: string,
   filter?: TableFilter
-): boolean {
+): boolean => {
+
+  if (!search && !filter)
+    return true
 
   let passesFilter = true
   let passesSearch = !search
@@ -95,6 +102,31 @@ function applySearchAndFilter<T extends Entity>(
   }
 
   return passesFilter && passesSearch
+}
+
+const applySort = <T extends Entity>(
+  item1: T,
+  item2: T,
+  columns: TableColumn<T>[],
+  sort?: readonly [string, ('asc' | 'desc')?],
+): number => {
+
+  if (!sort)
+    return 0
+
+  const [sortColumn, sortDirection='asc'] = sort
+  const column =
+    columns.find(column => column.name.toLowerCase() === sortColumn.toLowerCase())
+
+  if (!column)
+    return 0
+
+  const value1 = extractValue(column.data(item1)).toLowerCase()
+  const value2 = extractValue(column.data(item2)).toLowerCase()
+
+  return sortDirection === 'asc'
+    ? value1.localeCompare(value2)
+    : value2.localeCompare(value1)
 }
 
 

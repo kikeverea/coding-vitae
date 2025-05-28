@@ -319,5 +319,46 @@ describe('Table', () => {
 
       expect(cells[0].textContent).toBe('Lion')
     })
+
+    test('sorts rows ascending', () => {
+      render(<Table collection={ collection } columns={ columns } sort={['family']} />)
+
+      const rows = screen.getAllByRole('row').slice(1)
+      expect(rows.length).toBe(collection.length)
+
+      // Rows in expected order
+      const [dog, cat, lion, seaLion] = rows
+
+      const catNameCell = within(cat).getAllByRole('cell')[0]
+      const lionNameCell = within(lion).getAllByRole('cell')[0]
+      const dogNameCell = within(dog).getAllByRole('cell')[0]
+      const seaLionNameCell = within(seaLion).getAllByRole('cell')[0]
+
+      expect(catNameCell.textContent).toBe('Cat')
+      expect(lionNameCell.textContent).toBe('Lion')
+      expect(dogNameCell.textContent).toBe('Dog')
+      expect(seaLionNameCell.textContent).toBe('Sea Lion')
+    })
+
+    test('sorts rows descending', () => {
+      render(<Table collection={ collection } columns={ columns } sort={['family', 'desc']} />)
+
+      const rows = screen.getAllByRole('row').slice(1)
+      expect(rows.length).toBe(collection.length)
+
+      // Rows in expected order
+      const [seaLion, cat, lion, dog] = rows
+
+      const catNameCell = within(cat).getAllByRole('cell')[0]
+      const lionNameCell = within(lion).getAllByRole('cell')[0]
+      const dogNameCell = within(dog).getAllByRole('cell')[0]
+      const seaLionNameCell = within(seaLion).getAllByRole('cell')[0]
+
+      expect(catNameCell.textContent).toBe('Cat')
+      expect(lionNameCell.textContent).toBe('Lion')
+      expect(dogNameCell.textContent).toBe('Dog')
+      expect(seaLionNameCell.textContent).toBe('Sea Lion')
+
+    })
   })
 })
