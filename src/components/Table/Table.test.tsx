@@ -358,7 +358,28 @@ describe('Table', () => {
       expect(lionNameCell.textContent).toBe('Lion')
       expect(dogNameCell.textContent).toBe('Dog')
       expect(seaLionNameCell.textContent).toBe('Sea Lion')
+    })
 
+    test('sorts rows that pass a range filter, filter and search', () => {
+      render(<Table
+        collection={ collection }
+        columns={ columns }
+        filter={{ 'Age': { min: 8, max: 16 } }}
+        search='Lion'
+        sort={[ 'name', 'desc']}
+      />)
+
+      const rows = screen.getAllByRole('row').slice(1)
+      expect(rows.length).toBe(2)
+
+      // Rows in expected order
+      const [seaLion, lion] = rows
+
+      const seaLionCells = within(seaLion).getAllByRole('cell')
+      const lionCells = within(lion).getAllByRole('cell')
+
+      expect(lionCells[0].textContent).toBe('Lion')
+      expect(seaLionCells[0].textContent).toBe('Sea Lion')
     })
   })
 })
