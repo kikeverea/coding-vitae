@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
-import Table, { TableColumn } from './Table.tsx'
+import Table from './Table.tsx'
+import { TableColumn } from './types/types.ts'
 import { parse } from 'date-fns'
 
 type TestData = {

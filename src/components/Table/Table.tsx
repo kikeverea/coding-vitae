@@ -1,25 +1,5 @@
 import { isValidElement, ReactNode, useMemo } from 'react'
-
-export type Entity = { id: number | string }
-
-type TableFilter = {
-  [column: string]: string | { min?: number | string, max?: number | string, parser?: (value: string) => number }
-}
-
-export type TableColumn<T extends Entity> = {
-  name: string,
-  data: (item: T) => ReactNode
-}
-
-type TableProps<T extends Entity> = {
-  collection: T[] | null | undefined
-  columns: TableColumn<T>[],
-  search?: string,
-  filter?: TableFilter,
-  sort?: readonly [string, ('asc' | 'desc')?],
-  noEntriesMessage?: string
-}
-
+import { Entity, TableColumn, TableFilter, TableProps } from './types/types.ts'
 
 const Table = <T extends Entity>(
   {
